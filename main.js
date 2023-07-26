@@ -1476,14 +1476,70 @@ let pairings = [
 	}
 ];
 
-function round1() {
-	let roundJudges = getRoundJudges();
-	let roundPairings = getRoundPairings();
-	let assignments = [];
-	for (a = 0; a < 10000; a++) {
-		let shuffledJudges = shuffle(roundJudges);
-		let shuffledPairings = shuffle(roundPairings);
+const generationIterations = 2;
+
+function generateAssignments(roundNumber) {
+	let roundJudges = getRoundJudges(); //pull judges that have checked in
+	let roundPairings = getRoundPairings(roundNumber); //pull pairings from teh current round
+	let assignments = []; //initialize array to hold the generated assignments
+	for (let a = 0; a < generationIterations; a++) {//generate possible assignments however many times set in application
+		let shuffledJudges = shuffle(roundJudges);//first shuffle the judges
+		let shuffledPairings = shuffle(roundPairings);//and the pairings
+		let iterationAssignments = [];//initialize array that will hold this interation's assignments
+		while (shuffledJudges.length > 0) {//go through all the (now randomly ordered) judges
+			for (let b = 0; b < shuffledPairings.length; b++) {//and go through all the (randomly ordered) pairings
+				if (shuffledJudges.length > 0) {// only assign judges if there are in fact still judges to assign
+					if () {//check that judge doesn't have a conflict with the team
+						iterationAssignments.push({ "pairing": shuffledPairings[b], "judge": shuffledJudges[0] });
+						shuffledJudges.splice(0, 1);//remove the now assigned judge frome the list of unassigned judges
+					}
+
+				}
+			}
+		}
+		assignments.push(iterationAssignments);
 	}
+	return assignments;
+}
+
+
+printAssignments(generateAssignments(1)[0]);
+
+function printAssignments(assignments) {
+	/*
+	Prints assignments in column format for one iteration of assignments
+	*/
+	let minimumPairingId = 0;
+	let maximumPairingId = 0;
+	//determine range of pairing ids
+	for (let a = 0; a < assignments.length; a++) {
+		if (assignments[a].pairing.id < minimumPairingId) {
+			minimumPairingId = assignments[a].pairing.id;
+		}
+		if (assignments[a].pairing.id > maximumPairingId) {
+			maximumPairingId = assignments[a].pairing.id;
+		}
+	}
+	//iterate through assigments to print assignments in assignment id order
+	for (let a = minimumPairingId; a <= maximumPairingId; a++) {
+		let isFirstAssignment = true; //flag to check first time assignment appears and pull team names
+		let assignmentString = "";
+		for (let b = 0; b < assignments.length; b++) {
+			if (assignments[b].pairing.id == a) {//check if assigment matches the current pairing id
+				if (isFirstAssignment) {//print the team names only the first time the assignment comes up
+					assignmentString += getTeamById(assignments[b].pairing.plaintiffId).name + " v. " + getTeamById(assignments[b].pairing.defenseId).name;
+					isFirstAssignment = false;
+				}
+				assignmentString += " | " + getJudgeById(assignments[b].judge.id).name;
+			}
+		}
+		console.log(assignmentString);
+	}
+}
+
+function hasJudgeConflict(pairing, judge) {
+	let hasJudgeConflict = false;
+
 }
 
 function areCoachesJudging() {
@@ -1538,6 +1594,7 @@ function getRoundPairings(roundNumber) {
 }
 
 function shuffle(array) {
+	//CC BY-SA 4.0 https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
 	let currentIndex = array.length, randomIndex;
 
 	// While there remain elements to shuffle.
@@ -1553,4 +1610,24 @@ function shuffle(array) {
 	}
 
 	return array;
+}
+
+function getTeamById(id) {
+	let team = "Error: Team Not Found"
+	for (let a = 0; a < teams.length; a++) {
+		if (teams[a].id == id) {
+			team = teams[a];
+		}
+	}
+	return team;
+}
+
+function getJudgeById(id) {
+	let judge = "Error: Judge Not Found"
+	for (let a = 0; a < judges.length; a++) {
+		if (judges[a].id == id) {
+			judge = judges[a];
+		}
+	}
+	return judge;
 }
