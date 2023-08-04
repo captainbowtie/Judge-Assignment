@@ -1476,6 +1476,8 @@ let pairings = [
 	}
 ];
 
+let assignments = [];
+
 const generationIterations = 2;
 
 function generateAssignments(roundNumber) {
@@ -1489,9 +1491,11 @@ function generateAssignments(roundNumber) {
 		while (shuffledJudges.length > 0) {//go through all the (now randomly ordered) judges
 			for (let b = 0; b < shuffledPairings.length; b++) {//and go through all the (randomly ordered) pairings
 				if (shuffledJudges.length > 0) {// only assign judges if there are in fact still judges to assign
-					if () {//check that judge doesn't have a conflict with the team
+					if (!judgeHasRoundConflict(shuffledJudges[0], shuffledPairings[b])) {//check that judge doesn't have a conflict with the team
 						iterationAssignments.push({ "pairing": shuffledPairings[b], "judge": shuffledJudges[0] });
 						shuffledJudges.splice(0, 1);//remove the now assigned judge frome the list of unassigned judges
+					} else {
+						shuffledJudges.splice(0, 1);//even if not assigned, remove the problematic judge from the list of unassigned judges
 					}
 
 				}
@@ -1537,9 +1541,26 @@ function printAssignments(assignments) {
 	}
 }
 
-function hasJudgeConflict(pairing, judge) {
-	let hasJudgeConflict = false;
-
+function judgeHasRoundConflict(judge, pairing) {
+	let hasConflict = false;
+	for (let a = 0; a < conflicts.length; a++) {
+		if (conflicts[a].judgeId == judge.id) {
+			if (conflicts[a].teamId == pairing.plaintiffId || conflicts[a].teamId == pairing.defenseId) {
+				hasConflict = true;
+			}
+		}
+	}
+	for (let a = 0; a < assignments.length; a++) {
+		if (assignments[a].judge == judge) {
+			if (assignments[a].pairing.plaintiffId == pairing.plaintiffId ||
+				assignments[a].pairing.plaintiffId == pairing.defenseId ||
+				assignments[a].pairing.defenseId == pairing.plaintiffId ||
+				assignments[a].pairing.defenseId == pairing.defenseId) {
+				hasConflict = true;
+			}
+		}
+	}
+	return hasConflict;
 }
 
 function areCoachesJudging() {
