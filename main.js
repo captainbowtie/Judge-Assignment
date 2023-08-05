@@ -1506,6 +1506,147 @@ function generateAssignments(roundNumber) {
 	return assignments;
 }
 
+//Given an array of potential assignments return only those that contain the highest amount of judges assigned
+function filterForMaxJudgesAssigned(assignments) {
+	let filteredAssignments = [];
+	//determine what the best case scenario is for number of assigned judges
+	let maxJudgesAssigned = 0;
+	for (let a = 0; a < assignments.length; a++) {
+		if (assignments[a].length > maxJudgesAssigned) {
+			maxJudgesAssigned = assignments[a].length;
+		}
+	}
+
+	//and then remove any assignment options that assign less than that maximum
+	for (let a = 0; a < assignments.length; a++) {
+		if (assignments[a].length == maxJudgesAssigned) {
+			filteredAssignments.push(assignments[a]);
+		}
+	}
+
+	return filteredAssignments;
+}
+
+//Given an array of potential assignments, return only those that have the most tier 1 judges assigned
+function filterForTier1Judges(assignments) {
+	let filteredAssignments = [];
+	//determine best case scenairo for number of tier 1 judges assigned
+	let maxTier1Judges = 0;
+	for (let a = 0; a < assignments.length; a++) {
+		let tier1Count = 0;
+		for (let b = 0; b < assignments[a].length; b++) {
+			let judgeTier = assignments[a][b].judge.tier;
+			if (judgeTier == 1) {
+				tier1Count++;
+			}
+		}
+		if (tier1Count > maxTier1Judges) {
+			maxTier1Judges = tier1Count;
+		}
+	}
+
+	//and then remove any assignment options that have less tier 1 judges
+	for (let a = 0; a < assignments.length; a++) {
+		let tier1Count = 0;
+		for (let b = 0; b < assignments[a].length; b++) {
+			let judgeTier = assignments[a][b].judge.tier;
+			if (judgeTier == 1) {
+				tier1Count++;
+			}
+		}
+		if (tier1Count == maxTier1Judges) {
+			filteredAssignments.push(assignments[a]);
+		}
+	}
+
+	return filteredAssignments;
+}
+
+//Given an array of potential assignments, return only those that have the most tier 2 judges assigned
+function filterForTier2Judges(assignments) {
+	let filteredAssignments = [];
+	//determine best case scenairo for number of tier 1 judges assigned
+	let maxTier2Judges = 0;
+	for (let a = 0; a < assignments.length; a++) {
+		let tier2Count = 0;
+		for (let b = 0; b < assignments[a].length; b++) {
+			let judgeTier = assignments[a][b].judge.tier;
+			if (judgeTier == 2) {
+				tier2Count++;
+			}
+		}
+		if (tier2Count > maxTier2Judges) {
+			maxTier2Judges = tier2Count;
+		}
+	}
+
+	//and then remove any assignment options that have less tier 2 judges
+	for (let a = 0; a < assignments.length; a++) {
+		let tier2Count = 0;
+		for (let b = 0; b < assignments[a].length; b++) {
+			let judgeTier = assignments[a][b].judge.tier;
+			if (judgeTier == 2) {
+				tier2Count++;
+			}
+		}
+		if (tier2Count == maxTier2Judges) {
+			filteredAssignments.push(assignments[a]);
+		}
+	}
+
+	return filteredAssignments;
+}
+
+//Given an array of potential assignments, return only those that have the least standard deviation in judges per round
+function filterForEquityInJudgesPerRound(assignments) {
+	let assignmentSTDEVs = [];
+	for (let a = 0; a < assignments.length; a++) {
+		assignmentSTDEVs[a][0] = assignments[a];
+		assignmentSTDEVs[a][1] = 0;
+	}
+
+	//determine what the minimum stdev is
+	let minimumSTDEV = 1;
+	for (let a = 0; a < assignmentSTDEVs.length; a++) {
+
+		//first, compile list of judges per round for each set of assignments
+		let pairingJudgeCounts = [];
+		for (let b = 0; b < assignmentSTDEVs[a][0].length; b++) {
+			let pairingId = assignments[a][0][b].pairing.id;
+			if (typeof pairingJudgeCounts[pairingId] == 'undefined') {//first time pairing comes up, initialize to one judge
+				pairingJudgeCounts[pairingId] = 1;
+			} else {
+				pairingJudgeCounts[pairingId]++; //if not first time, increase the judge count
+			}
+		}
+
+		//second, cull out the ones with undefined number of judges
+		for (let b = 0; b < pairingJudgeCounts.length; b++) {
+			if (typeof pairingJudgeCounts[b] == 'undefined') {
+				pairingJudgeCounts.splice(b, 1);
+			}
+		}
+
+		//third, actually calculate the standard deviation and save it
+		assignments[a][1] = getStandardDeviation(pairingJudgeCounts);
+
+		//fourth, update the minimum standard deviation if less than current minimum
+		if (assignments[a][1] < minimumSTDEV) {
+			minimumSTDEV = assignments[a][1];
+		}
+
+	}
+
+	//and then cull those assignments that don't meet the minimum
+	let filteredAssignments = [];
+	for (let a = 0; a < assignmentSTDEVs.length; a++) {
+		if (assignmentSTDEVs[a][1] <= minimumSTDEV) {
+			filteredAssignments.push(assignmentSTDEVs[a][0]);
+		}
+	}
+	return filteredAssignments;
+
+}
 
 printAssignments(generateAssignments(1)[0]);
 
@@ -1632,6 +1773,14 @@ function shuffle(array) {
 
 	return array;
 }
+
+function getStandardDeviation(array) {
+	//CC BY-SA 4.0 https://stackoverflow.com/questions/7343890/standard-deviation-javascript
+	const n = array.length
+	const mean = array.reduce((a, b) => a + b) / n
+	return Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / n)
+}
+
 
 function getTeamById(id) {
 	let team = "Error: Team Not Found"
