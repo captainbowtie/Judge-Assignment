@@ -1628,7 +1628,7 @@ function filterForEquityInJudgesPerRound(assignments) {
 		}
 
 		//third, actually calculate the standard deviation and save it
-		assignments[a][1] = getStandardDeviation(pairingJudgeCounts);
+		assignments[a][1] = stdev(pairingJudgeCounts);
 
 		//fourth, update the minimum standard deviation if less than current minimum
 		if (assignments[a][1] < minimumSTDEV) {
@@ -1647,6 +1647,55 @@ function filterForEquityInJudgesPerRound(assignments) {
 	return filteredAssignments;
 
 }
+
+//Given an array of potential assignments, return only those that have the least standard deviation in average judge quality per round
+function filterForJudgeTierDistribution(assignments) {
+	let assignmentSTDEVs = [];
+
+	let minimumSTDEV = 1;
+	for (let a = 0; a < assignments.length; a++) {
+		assignmentSTDEVs[a][0] = assignments[a];
+
+		//caclulate standard deviation for each
+		let assignmentCounts = [];
+		for (let b = 0; b < assignments[a].length; b++) {
+			let pairingId = assignments[a][b].pairing.id;
+			let tier = assignments[a][b].judge.tier;
+			if (typeof assignmentCounts[pairingId] == 'undefined') {//first time pairing comes up, its judge counts
+				assignmentCounts[pairingId][0] = 1; //denominator
+				assignmentCounts[pairingId][1] = 0;
+				assignmentCounts[pairingId][2] = 0;
+				assignmentCounts[pairingId][3] = 0;
+				assignmentCounts[pairingId][tier] = 1;
+			} else {
+				assignmentCounts[pairingId][tier]++;
+				assignmentCounts[pairingId][0]++;
+			}
+		}
+		let averages = [];
+		for (let b = 0; b < assignmentCounts.length; b++) {
+			if (typeof assignmentCounts[pairingId] != 'undefined') {
+				let avgQuality = (assignmentCounts[pairingId][1] * 1 +
+					assignmentCounts[pairingId][2] * 2 +
+					assignmentCounts[pairingId][3] * 3) / assignmentCounts[pairingId][0]
+				averages.push(avgQuality);
+			}
+		}
+		assignmentSTDEVs[a][1] = stdev(averages);
+		if (assignmentSTDEVs[a][1] < minimumSTDEV) {
+			minimumSTDEV = assignmentSTDEVs[a][1];
+		}
+	}
+
+	let assignments = [];
+	for (let a = 0; a < assignmentSTDEVs.length; a++) {
+		if (assignmentSTDEVs[a][1] == minimumSTDEV) {
+			assignments.push(assignmentSTDEVs[a][0])
+		}
+	}
+	return assignments;
+}
+
 
 printAssignments(generateAssignments(1)[0]);
 
@@ -1774,7 +1823,7 @@ function shuffle(array) {
 	return array;
 }
 
-function getStandardDeviation(array) {
+function stdev(array) {
 	//CC BY-SA 4.0 https://stackoverflow.com/questions/7343890/standard-deviation-javascript
 	const n = array.length
 	const mean = array.reduce((a, b) => a + b) / n
