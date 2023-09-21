@@ -33,9 +33,5 @@ plaintiff SMALLINT UNSIGNED NOT NULL,
 defense SMALLINT UNSIGNED NOT NULL
 )";
 
-if ($conn->query($query) === TRUE) {
-} else {
-	echo "Error creating table: " . $conn->error;
-}
-
-$conn->close();
+$conn->exec($query);
+$conn = null;

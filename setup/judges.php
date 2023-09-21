@@ -33,9 +33,5 @@ category TINYINT UNSIGNED NOT NULL DEFAULT 1,
 checkedIn BOOLEAN NOT NULL DEFAULT false
 )";
 
-if ($conn->query($query) === TRUE) {
-} else {
-	echo "Error creating table: " . $conn->error;
-}
-
-$conn->close();
+$conn->exec($query);
+$conn = null;

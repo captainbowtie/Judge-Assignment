@@ -33,10 +33,5 @@ pairing INT UNSIGNED NOT NULL,
 judge SMALLINT UNSIGNED NOT NULL DEFAULT 0
 )";
 
-if ($conn->query($query) === TRUE) {
-    
-} else {
-    echo "Error creating table: " . $conn->error;
-}
-
-$conn->close();
+$conn->exec($query);
+$conn = null;

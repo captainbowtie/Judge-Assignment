@@ -25,8 +25,8 @@
 class Database
 {
 
-	private $host = "db";
-	private $database = "judges";
+	private $host = "dev-mariadb";
+	private $database = "db";
 	private $username = "user";
 	private $password = "password";
 	public $conn;
@@ -34,13 +34,12 @@ class Database
 	// get the database connection
 	public function getConnection()
 	{
-
-		$conn = new mysqli($this->host, $this->username, $this->password, $this->database);
-
-		if ($conn->connect_error) {
-			die("Connection failed: " . $conn->connect_error);
+		try {
+			$conn = new PDO("mysql:host=$this->host;dbname=$this->database", $this->username, $this->password);
+			$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+			return $conn;
+		} catch (PDOException $e) {
+			echo "Connection failed: " . $e->getMessage();
 		}
-
-		return $conn;
 	}
 }

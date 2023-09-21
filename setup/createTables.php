@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-require_once __DIR__ . "/config.php";
+require_once __DIR__ . "/../config.php";
 require_once SITE_ROOT . "/database.php";
 
 require_once SITE_ROOT . "/setup/assignments.php";
