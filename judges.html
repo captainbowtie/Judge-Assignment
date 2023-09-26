@@ -1,6 +1,39 @@
-<table id="judges"></table>
-<div id="newJudgeDiv">
-  <input id="newJudgeName" />
-  <button id="addConflicts">Add Conflicts</button>
-  <button id="addJudge">Add Judge</button>
-</div>
+<!DOCTYPE html>
+<!--
+Copyright (C) 2023 allen
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+-->
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <title>Judges</title>
+  </head>
+  <body>
+    <table id="judges"></table>
+    <div id="newJudgeDiv">
+      <input id="newJudgeName" />
+      <select name="newJudgeCategory" id="newJudgeCategory">
+        <option value="0" selected="selected">Category</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+      </select>
+      <button id="addJudge">Add Judge</button>
+    </div>
+    <script src="judges.js"></script>
+  </body>
+</html>
