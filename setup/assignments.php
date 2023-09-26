@@ -27,7 +27,7 @@ $db = new Database();
 $conn = $db->getConnection();
 
 //Query to create table
-$query = "CREATE TABLE IF NOT EXISTS ballots (
+$query = "CREATE TABLE IF NOT EXISTS assignments (
 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 pairing INT UNSIGNED NOT NULL,
 judge SMALLINT UNSIGNED NOT NULL DEFAULT 0
