@@ -23,7 +23,7 @@ require_once SITE_ROOT . "/database.php";
 try {
 	$db = new Database();
 	$conn = $db->getConnection();
-	$stmt = $conn->prepare("SELECT id,name,category,checkedIn FROM judges ORDER BY name");
+	$stmt = $conn->prepare("SELECT id,judge,team FROM conflicts");
 	$stmt->execute();
 	$result = $stmt->setFetchMode(PDO::FETCH_ASSOC);
 	echo json_encode($stmt->fetchAll());
