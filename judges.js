@@ -1,3 +1,19 @@
+/* 
+ * Copyright (C) 2023 allen
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 $(document).ready(function () {
 	getJudges().then((judges) => fillTable(judges));
 	setInterval(function () { getJudges().then((judges) => fillTable(judges)); }, 10000);
@@ -53,15 +69,15 @@ function createJudgeRow(judge) {
 	rowHTML += "</td><td>";
 	rowHTML += "<button class='deleteJudge'>Delete</button>";
 	rowHTML += "</td><td>";
-	rowHTML += `<input type='checkbox' class='checkedIn' ${(judge.checkedIn == 1) ? 'checked' : ''}>`;
+	rowHTML += `<input type='checkbox' class='checkIn' ${(judge.checkedIn == 1) ? 'checked' : ''}>`;
 	rowHTML += "</td></tr>"
 
 	return rowHTML;
 }
 
 function createConflictRow(conflict) {
-	let rowHTML = `<tr><td>${conflict.team}</td><td><button class='deleteConflict>Delete</button></td></tr>`
-	return rownHTML;
+	let rowHTML = `<tr><td>${conflict.team}</td><td><button class='deleteConflict' conflict='${conflict.id}'>Delete</button></td></tr>`
+	return rowHTML;
 }
 
 function fillTable(judges) {
@@ -85,7 +101,7 @@ function fillTable(judges) {
 		updateCategory(id, category);
 	});
 
-	$(".checkedIn").on("change", function () {
+	$(".checkIn").on("change", function () {
 		let id = $(this).parent().parent().attr("id");
 		if ($(this).prop("checked")) {
 			checkIn(id);
@@ -108,7 +124,7 @@ function fillTable(judges) {
 					text: "Delete",
 					click: function () {
 						deleteJudge(id);
-						getJudges().then(() => fillTable());
+						getJudges().then((judges) => fillTable(judges));
 						$(this).dialog("close");
 					}
 				}
@@ -121,31 +137,54 @@ function fillTable(judges) {
 	$(".conflicts").click(function () {
 		//get conflict list
 		let id = $(this).parent().parent().attr("id");
-		getJudgeConflicts(id).then((conflicts) => {
-			//generate HTML from that list
-			let modalHTML = "<table>";
+		let name = $(this).parent().parent().children().children(".name").val();
+		conflictModal(id, name);
+	});
+}
+
+function conflictModal(id, name) {
+	getJudgeConflicts(id).then((conflicts) => {
+		//generate HTML from that list
+		let modalHTML = "<table>";
+		modalHTML += "<tr><td><input id='conflictInput' maxlength='4' size='4'></td><td><button id='addConflict'>Add</button></td></tr>";
+		if (conflicts.length == 0) {
+			modalHTML += "<tr><td>No conflicts found</td></tr>";
+			modalHTML += "<tr><td>Add conflicts above</td></tr>";
+		} else {
 			conflicts.forEach((conflict) => {
 				modalHTML += createConflictRow(conflict);
 			});
-			modalHTML += "</table>";
-			//display HTML in the modal
-			$("#modal").html(modalHTML);
-			$("#modal").dialog({
-				title: "Conflicts",
-				modal: true
-			});
-			//attach listeners to the elements within the modal
-			$(".deleteConflict").click(function () {
-				deleteConflict(id);
-			});
+		}
+		modalHTML += "</table>";
+
+		//display HTML in the modal
+		$("#modal").html(modalHTML);
+		$("#modal").dialog({
+			title: `${name} - Conflicts`,
+			modal: true
+		});
+		//attach listeners to the elements within the modal
+		$(".deleteConflict").click(function () {
+			let conflictId = $(this).attr("conflict");
+			deleteConflict(conflictId);
+			conflictModal(id, name);
 		});
 
-
-
-
-
+		$("#addConflict").click(function () {
+			createConflict(id, $("#conflictInput").val());
+			conflictModal(id, name);
+		});
 	});
 }
+
+$("#addJudge").click(function () {
+	let name = $("#newJudgeName").val();
+	let category = $("#newJudgeCategory").val();
+	if (category == 0) { category = 1 };
+	createJudge(name, category);
+	getJudges().then((judges) => fillTable(judges));
+	$("#newJudgeName").val("");
+});
 
 function updateName(id, name) {
 	$.post("api/judges/updateName.php", { "id": id, "name": name }, "json");
@@ -169,4 +208,12 @@ function deleteJudge(id) {
 
 function deleteConflict(id) {
 	$.post("api/conflicts/delete.php", { "id": id }, "json");
+}
+
+function createConflict(judgeId, teamNumber) {
+	$.post("api/conflicts/create.php", { "judge": judgeId, "team": teamNumber }, "json");
+}
+
+function createJudge(name, category) {
+	$.post("api/judges/create.php", { "name": name, "category": category }, "json");
 }

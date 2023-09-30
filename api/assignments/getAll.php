@@ -20,34 +20,14 @@
 require_once __DIR__ . "/../../config.php";
 require_once SITE_ROOT . "/database.php";
 
-if (
-	isset($_GET["judgeId"])
-) {
-	$judgeId = htmlspecialchars(strip_tags($_GET["judgeId"]));
-
-	getConflicts($judgeId);
-} else {
-
-	// set response code - 400 bad request
-	http_response_code(400);
-
-	// tell the user
-	echo json_encode(array("message" => "Unable to get conflicts. Data is incomplete."));
+try {
+	$db = new Database();
+	$conn = $db->getConnection();
+	$stmt = $conn->prepare("SELECT * FROM assignments");
+	$stmt->execute();
+	$result = $stmt->setFetchMode(PDO::FETCH_ASSOC);
+	echo json_encode($stmt->fetchAll());
+} catch (PDOException $e) {
+	echo "Error: " . $e->getMessage();
 }
-
-
-function getConflicts($judgeId)
-{
-	try {
-		$db = new Database();
-		$conn = $db->getConnection();
-		$stmt = $conn->prepare("SELECT id,judge,team FROM conflicts WHERE judge=:judgeId ORDER BY team");
-		$stmt->bindParam(':judgeId', $judgeId);
-		$stmt->execute();
-		$result = $stmt->setFetchMode(PDO::FETCH_ASSOC);
-		echo json_encode($stmt->fetchAll());
-	} catch (PDOException $e) {
-		echo "Error: " . $e->getMessage();
-	}
-	$conn = null;
-}
+$conn = null;
