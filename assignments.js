@@ -21,7 +21,8 @@ $(document).ready(function () {
 	updatePairings();
 	updateAssignments();
 	updateJudges();
-	setInterval(function () { updateJudges; }, 10000);
+	setInterval(function () { updateJudges(); }, 10000);
+	$("#assignments").tabs();
 });
 
 function updatePairings() {
@@ -53,11 +54,15 @@ function getAllConflicts() {
 };
 
 function updateAssignments() {
-	$.get("api/assignments/getAll.php",
-		function (data) {
-			assignments = data;
-		},
-		"json");
+	return new Promise((resolve, reject) => {
+		$.get("api/assignments/getAll.php",
+			function (data) {
+				assignments = data;
+				resolve();
+			},
+			"json");
+	});
+
 };
 
 function checkIn(id) {
@@ -149,8 +154,21 @@ function buildAssignmentTable(roundNumber) {
 		tableHTML += buildPairingRow(pairing);
 	});
 
+
 	tableHTML += "</table>";
-	$("#assignments").html(tableHTML);
+	let buttonHTML = "<div>"
+	buttonHTML += "<button class='addPairing'>Add Pairing Row</button>";
+	buttonHTML += "<button class='deletePairing'>Delete Pairing Row</button>";
+	buttonHTML += "<button class='addJudge'>Add Judge Column</button>";
+	buttonHTML += "<button class='deleteJudge'>Delete Judge Column</button>";
+	buttonHTML += "</div>"
+	buttonHTML += "<div>"
+	buttonHTML += "<button class='savePairings'>Save Pairings</button>";
+	buttonHTML += "<button class='saveAssignments'>Save Assignments</button>";
+	buttonHTML += "</div>"
+
+	$(`#round${roundNumber}`).html(tableHTML + buttonHTML);
+	fillJudgeSelects();
 
 	function buildPairingRow(pairing) {
 		let rowHTML = `<tr pairing='${pairing.id}'>`;
@@ -158,9 +176,67 @@ function buildAssignmentTable(roundNumber) {
 		rowHTML += `<td><input class='plaintiff' maxlength='4' size='4' value='${pairing.plaintiff}'></td>`;//π
 		rowHTML += `<td><input class='defense' maxlength='4' size='4' value='${pairing.defense}'></td>`;//∆
 		for (let a = 0; a < maxJudgesPerPairing; a++) {
-			rowHTML += "<td><select class='judgeSelect'></select></td>"
+			rowHTML += `<td><select class='judgeSelect' pairing='${pairing.id}'></select></td>`
 		}
 		rowHTML += "</tr>"
 		return rowHTML;
 	}
+
+	function fillJudgeSelects() {
+		getAllJudges().then((judges) => {
+			//first we just fill all the selects with all the names
+			let judgeSelects = $(`#round${roundNumber}`).children().children().children().children().children(".judgeSelect");
+			for (let a = 0; a < judgeSelects.length; a++) {
+				let selectHTML = "<option selected value='0'>---</option>";
+				judges.forEach((judge) => {
+					selectHTML += `<option value ='${judge.id}'>${judge.name}</option>`
+				});
+				$(judgeSelects[a]).html(selectHTML);
+			}
+
+			//then we go through and see if assignments already exist, and if so, update the selects to reflect thos assignments
+			let pairingRows = $(`#round${roundNumber}`).children().children().children();
+			for (let a = 0; a < pairingRows.length; a++) {
+				let pairingId = $(pairingRows[a]).attr("pairing");
+				let judgeIds = [];
+				for (let b = 0; b < assignments.length; b++) {
+					if (assignments[b].pairing == pairingId) {
+						judgeIds.push(assignments[b].judge);
+					}
+				}
+				let pairingSelects = $(pairingRows[a]).children().children(".judgeSelect");
+				for (let b = 0; b < judgeIds.length; b++) {
+					$(pairingSelects[b]).val(judgeIds[b]);
+				}
+			}
+		});
+	}
+}
+
+
+
+function updateJudgeSelects() {
+	Promise.all(getAllJudges(), updateAssignments(), updatePairings()).then((data) => {
+		let judges = data[0];
+
+		for (let a = 0; a < judgeSelects.length; a++) {
+			// the selects currently don't have anything in them, then fill them and set their value
+			if ($(judgeSelects[a]).val() === null) {
+
+			} else { //if the selects alraedy do have values, preserve those values
+				let value = $(judgeSelects[a]).val();
+				let selectHTML = "<option selected value='0'>---</option>";
+				judges.forEach((judge) => {
+					if (judge.id == value) {
+						selectHTML += `<option value ='${judge.id}' selected>${judge.name}</option>`
+					} else {
+						selectHTML += `<option value ='${judge.id}'>${judge.name}</option>`
+					}
+
+				});
+			}
+		}
+		//
+
+	});
 }
