@@ -61,13 +61,14 @@ function createAssignments($assignments)
 	$assignmentsCreated = false;
 	$db = new Database();
 	$conn = $db->getConnection();
-	foreach ($assignments as &$assignment) {
-		$deleteStmt = $conn->prepare("DELETE FROM assignments WHERE pairing=:pairing");
-		$deleteStmt->bindParam(':pairing', $pairing);
+	$deleteStmt = $conn->prepare("DELETE FROM assignments WHERE pairing=:pairing");
+	foreach ($assignments as $assignment) {
+		$deleteStmt->bindParam(':pairing', $assignment["pairing"]);
+		var_dump($deleteStmt);
 		$deleteStmt->execute();
 	}
 	$createStmt = $conn->prepare("INSERT INTO assignments (pairing, judge) VALUES (:pairing, :judge)");
-	foreach ($assignments as &$assignment) {
+	foreach ($assignments as $assignment) {
 		$createStmt->bindParam(':pairing', $assignment["pairing"]);
 		$createStmt->bindParam(':judge', $assignment["judge"]);
 		$createStmt->execute();

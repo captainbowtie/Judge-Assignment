@@ -18,19 +18,27 @@ let pairings;
 let assignments;
 
 $(document).ready(function () {
-	updatePairings();
-	updateAssignments();
 	updateJudges();
 	setInterval(function () { updateJudges(); }, 10000);
 	$("#assignments").tabs();
+	Promise.all([updatePairings(), updateAssignments()]).then(() => {
+		for (let a = 0; a < 4; a++) {
+			buildAssignmentTable(a + 1);
+		}
+	});
+
 });
 
 function updatePairings() {
-	$.get("api/pairings/getAll.php",
-		function (data) {
-			pairings = data;
-		},
-		"json");
+	return new Promise((resolve, reject) => {
+		$.get("api/pairings/getAll.php",
+			function (data) {
+				pairings = data;
+				resolve();
+			},
+			"json");
+	});
+
 };
 
 function getAllJudges() {
@@ -72,7 +80,6 @@ function checkIn(id) {
 function checkOut(id) {
 	$.post("api/judges/checkOut.php", { "id": id }, "json");
 }
-
 
 function updateJudges() {
 	getAllJudges().then((judges) => {
@@ -153,34 +160,119 @@ function buildAssignmentTable(roundNumber) {
 	roundPairings.forEach((pairing) => {
 		tableHTML += buildPairingRow(pairing);
 	});
-
-
-	tableHTML += "</table>";
-	let buttonHTML = "<div>"
-	buttonHTML += "<button class='addPairing'>Add Pairing Row</button>";
-	buttonHTML += "<button class='deletePairing'>Delete Pairing Row</button>";
-	buttonHTML += "<button class='addJudge'>Add Judge Column</button>";
-	buttonHTML += "<button class='deleteJudge'>Delete Judge Column</button>";
-	buttonHTML += "</div>"
-	buttonHTML += "<div>"
-	buttonHTML += "<button class='savePairings'>Save Pairings</button>";
-	buttonHTML += "<button class='saveAssignments'>Save Assignments</button>";
-	buttonHTML += "</div>"
-
-	$(`#round${roundNumber}`).html(tableHTML + buttonHTML);
-	fillJudgeSelects();
-
 	function buildPairingRow(pairing) {
 		let rowHTML = `<tr pairing='${pairing.id}'>`;
-		rowHTML += `<td><input class='room' value='${pairing.room}'></td>`;//room
-		rowHTML += `<td><input class='plaintiff' maxlength='4' size='4' value='${pairing.plaintiff}'></td>`;//π
-		rowHTML += `<td><input class='defense' maxlength='4' size='4' value='${pairing.defense}'></td>`;//∆
+		rowHTML += `<td><input class='room' value='${pairing.room}' disabled="disabled"></td>`;//room
+		rowHTML += `<td><input class='plaintiff' maxlength='4' size='4' value='${pairing.plaintiff}' disabled="disabled"></td>`;//π
+		rowHTML += `<td><input class='defense' maxlength='4' size='4' value='${pairing.defense}' disabled="disabled"></td>`;//∆
 		for (let a = 0; a < maxJudgesPerPairing; a++) {
-			rowHTML += `<td><select class='judgeSelect' pairing='${pairing.id}'></select></td>`
+			rowHTML += `<td><select class='judgeSelect' pairing='${pairing.id}' `
+			//if assignments already exist, then disable the selects
+			if (roundAssignments.length > 0) {
+				rowHTML += "disabled='disabled'";
+			}
+			rowHTML += `></select></td>`;
 		}
 		rowHTML += "</tr>"
 		return rowHTML;
 	}
+
+	tableHTML += "</table>";
+	//html for buttons
+	let buttonHTML = "<div>"
+	//if pairings already exist, the add/delete pairing buttons should be disabled
+	if (roundPairings.length > 0) {
+		buttonHTML += "<button class='addPairing' disabled='disabled'>Add Pairing Row</button>";
+		buttonHTML += "<button class='removePairing' disabled='disabled'>Delete Pairing Row</button>";
+	} else {
+		buttonHTML += "<button class='addPairing'>Add Pairing Row</button>";
+		buttonHTML += "<button class='removePairing'>Delete Pairing Row</button>";
+	}
+
+	//if assignments already exist, the add/delete judge buttons should be disabled
+	if (roundAssignments.length > 0) {
+		buttonHTML += "<button class='addJudge' disabled='disabled'>Add Judge Column</button>";
+		buttonHTML += "<button class='removeJudge' disabled='disabled'>Delete Judge Column</button>";
+	} else {
+		buttonHTML += "<button class='addJudge'>Add Judge Column</button>";
+		buttonHTML += "<button class='removeJudge'>Delete Judge Column</button>";
+	}
+
+	buttonHTML += "</div>"
+	buttonHTML += "<div>"
+	//if pairings already exist, the save pairing button should be changed to an edit button
+	if (roundPairings.length > 0) {
+		buttonHTML += "<button class='editPairings'>Edit Pairings</button>";
+	} else {
+		buttonHTML += "<button class='savePairings'>Save Pairings</button>";
+	}
+
+	//if assignments already exist, the save assignments button should be changed to an edit button
+	if (roundAssignments.length > 0) {
+		buttonHTML += "<button class='editAssignments'>Edit Assignments</button>";
+	} else {
+		buttonHTML += "<button class='saveAssignments'>Save Assignments</button>";
+	}
+	buttonHTML += "</div>"
+
+	$(`#round${roundNumber}`).html(tableHTML + buttonHTML);
+
+	$(`#round${roundNumber}`).children().children(".addPairing").click(() => {
+		addPairingRow();
+	});
+	$(`#round${roundNumber}`).children().children(".removePairing").click(() => {
+		removePairingRow();
+	});
+	$(`#round${roundNumber}`).children().children(".addJudge").click(() => {
+		addJudgeColumn();
+	});
+	$(`#round${roundNumber}`).children().children(".removeJudge").click(() => {
+		removeJudgeColumn();
+	});
+	attachSavePairingsHandler();
+	function attachSavePairingsHandler() {
+		$(`#round${roundNumber}`).children().children(".savePairings").click(() => {
+			if (roundPairings.length > 0) {
+				let modalHTML = `<div>Pairings already exist for this round. Are you sure you want to overwrite them?</div>`;
+				$("#modal").html(modalHTML);
+				$("#modal").dialog({
+					buttons: [
+						{
+							text: "Confirm",
+							click: function () {
+								savePairings();
+								$(this).dialog("close");
+							}
+						}
+					],
+					title: "Confirm New Pairings",
+					modal: true
+				});
+			} else { savePairings(); }
+
+		});
+	}
+
+	$(`#round${roundNumber}`).children().children(".saveAssignments").click(() => {
+		saveAssignments();
+	});
+	$(`#round${roundNumber}`).children().children(".editPairings").click(() => {
+		$(`#round${roundNumber}`).children().children(".editPairings").html("Save Pairings");
+		$(`#round${roundNumber}`).children().children(".editPairings").attr("class", "savePairings");
+		$(`#round${roundNumber}`).children().children(".addPairing").prop("disabled", false);
+		$(`#round${roundNumber}`).children().children(".removePairing").prop("disabled", false);
+		let rows = $(`#round${roundNumber}`).children("table").children().children("tr");
+		for (let a = 1; a < rows.length; a++) {
+			$(rows[a]).children().children(".room").prop("disabled", false);
+			$(rows[a]).children().children(".plaintiff").prop("disabled", false);
+			$(rows[a]).children().children(".defense").prop("disabled", false);
+		}
+		attachSavePairingsHandler();
+	});
+
+	fillJudgeSelects();
+
+
 
 	function fillJudgeSelects() {
 		getAllJudges().then((judges) => {
@@ -211,14 +303,101 @@ function buildAssignmentTable(roundNumber) {
 			}
 		});
 	}
+
+	function addPairingRow() {
+		let rowHTML = "<tr>";
+		rowHTML += "<td><input class='room'></td>"
+		rowHTML += "<td><input class='plaintiff' maxlength='4' size='4'></td>";
+		rowHTML += "<td><input class='defense' maxlength='4' size='4'></td>";
+		getAllJudges().then((judges) => {
+			//first we just fill all the selects with all the names	
+			let selectHTML = "<option selected value='0'>---</option>";
+			judges.forEach((judge) => {
+				selectHTML += `<option value ='${judge.id}'>${judge.name}</option>`
+			});
+
+			for (let a = 0; a < maxJudgesPerPairing; a++) {
+				rowHTML += `<td><select class='judgeSelect'>${selectHTML}</select></td>`;
+			}
+			"</tr>"
+			$(`#round${roundNumber}`).children("table").append(rowHTML);
+		});
+	}
+
+	function removePairingRow() {
+		let rows = $(`#round${roundNumber}`).children("table").children().children("tr");
+		$(rows[rows.length - 1]).remove();
+	}
+
+	function addJudgeColumn() {
+		maxJudgesPerPairing++;
+		let rows = $(`#round${roundNumber}`).children("table").children().children("tr");
+		$(rows[0]).append(`<th>Judge ${maxJudgesPerPairing}</th>`);
+		getAllJudges().then((judges) => {
+			//first we just fill all the selects with all the names	
+			let selectHTML = "<td><select class='judgeSelect'><option selected value='0'>---</option>";
+			judges.forEach((judge) => {
+				selectHTML += `<option value ='${judge.id}'>${judge.name}</option>`
+			});
+			selectHTML += "</select></td>";
+			for (let a = 1; a < rows.length; a++) {
+				$(rows[a]).append(selectHTML);
+			}
+		});
+	}
+
+	function removeJudgeColumn() {
+		if (maxJudgesPerPairing > 0) {
+			maxJudgesPerPairing--;
+			let rows = $(`#round${roundNumber}`).children("table").children().children("tr");
+			let indexForRemoval = $(rows[0]).children().length - 1;
+			for (let a = 0; a < rows.length; a++) {
+				$($(rows[a]).children()[indexForRemoval]).remove();
+			}
+		}
+	}
+
+	function savePairings() {
+		let pairings = [];
+		let rows = $(`#round${roundNumber}`).children("table").children().children("tr");
+		//start at 1 because [0] is the header row
+		for (let a = 1; a < rows.length; a++) {
+			let room = $(rows[a]).children().children(".room").val();
+			let plaintiff = $(rows[a]).children().children(".plaintiff").val();
+			let defense = $(rows[a]).children().children(".defense").val();
+			let pairing = {
+				"room": room,
+				"plaintiff": plaintiff,
+				"defense": defense
+			};
+			pairings.push(pairing);
+		}
+		let data = JSON.stringify({ "round": roundNumber, "pairings": pairings });
+		$.post("api/pairings/create.php", data, () => { buildAssignmentTable(roundNumber) }, "json");
+	}
+
+	function saveAssignments() {
+		let rows = $(`#round${roundNumber}`).children("table").children().children("tr");
+		let assignments = [];
+		//start at 1 because [0] is the header row
+		for (let a = 1; a < rows.length; a++) {
+			let selects = $(rows[a]).children().children("select");
+			let pairing = $(rows[a]).attr("pairing");
+			for (let b = 0; b < selects.length; b++) {
+				let judge = $(selects[b]).val();
+				let assignment = { "pairing": pairing, "judge": judge };
+				assignments.push(assignment);
+			}
+		}
+		let data = JSON.stringify({ "assignments": assignments });
+		$.post("api/assignments/create.php", data, () => {
+			updateAssignments().then(() => { buildAssignmentTable(roundNumber) });
+		}, "json");
+	}
 }
 
-
-
 function updateJudgeSelects() {
-	Promise.all(getAllJudges(), updateAssignments(), updatePairings()).then((data) => {
-		let judges = data[0];
-
+	getAllJudges().then((judges) => {
 		for (let a = 0; a < judgeSelects.length; a++) {
 			// the selects currently don't have anything in them, then fill them and set their value
 			if ($(judgeSelects[a]).val() === null) {

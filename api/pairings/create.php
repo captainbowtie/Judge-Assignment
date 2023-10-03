@@ -64,12 +64,21 @@ function createPairings($round, $pairings)
 	$pairingsCreated = false;
 	$db = new Database();
 	$conn = $db->getConnection();
+	//get ids of existing pairings for the round so their corresponding assignments can be deleted
+	$existingPairingsStmt = $conn->prepare("SELECT id FROM pairings WHERE round=:round");
+	$existingPairingsStmt->bindParam(':round', $round);
+	$existingPairingsStmt->execute();
+	$existingPairingsResult = $existingPairingsStmt->fetchAll(PDO::FETCH_ASSOC);
+	//delete existing pairings from assignments
+	$deleteAssignmentsStmt = $conn->prepare("DELETE FROM assignments WHERE pairing=:pairing");
+	foreach ($existingPairingsResult as $pairing) {
+		$deleteAssignmentsStmt->bindParam(':pairing', $pairing["id"]);
+		$deleteAssignmentsStmt->execute();
+	}
+	//delete old pairings
 	$deletePairingsStmt = $conn->prepare("DELETE FROM pairings WHERE round=:round");
 	$deletePairingsStmt->bindParam(':round', $round);
 	$deletePairingsStmt->execute();
-	$deleteAssignmentsStmt = $conn->prepare("DELETE FROM assignments WHERE round=:round");
-	$deleteAssignmentsStmt->bindParam(':round', $round);
-	$deleteAssignmentsStmt->execute();
 	$createStmt = $conn->prepare("INSERT INTO pairings (round, room, plaintiff, defense) VALUES (:round, :room, :plaintiff, :defense)");
 	$createStmt->bindParam(':round', $round);
 	foreach ($pairings as &$pairing) {
