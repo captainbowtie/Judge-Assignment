@@ -64,7 +64,6 @@ function createAssignments($assignments)
 	$deleteStmt = $conn->prepare("DELETE FROM assignments WHERE pairing=:pairing");
 	foreach ($assignments as $assignment) {
 		$deleteStmt->bindParam(':pairing', $assignment["pairing"]);
-		var_dump($deleteStmt);
 		$deleteStmt->execute();
 	}
 	$createStmt = $conn->prepare("INSERT INTO assignments (pairing, judge) VALUES (:pairing, :judge)");

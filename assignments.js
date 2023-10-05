@@ -74,11 +74,23 @@ function updateAssignments() {
 };
 
 function checkIn(id) {
-	$.post("api/judges/checkIn.php", { "id": id }, "json");
+	return new Promise((resolve, reject) => {
+		$.post("api/judges/checkIn.php",
+			{ "id": id },
+			() => { resolve(); },
+			"json");
+	});
+
 }
 
 function checkOut(id) {
-	$.post("api/judges/checkOut.php", { "id": id }, "json");
+	return new Promise((resolve, reject) => {
+		$.post("api/judges/checkOut.php",
+			{ "id": id },
+			() => { resolve() },
+			"json");
+	});
+
 }
 
 function updateJudges() {
@@ -96,9 +108,9 @@ function updateJudges() {
 		$(".checkIn").on("change", function () {
 			let id = $(this).attr("judge");
 			if ($(this).prop("checked")) {
-				checkIn(id);
+				checkIn(id).then(() => { screenAssignments() });
 			} else {
-				checkOut(id);
+				checkOut(id).then(() => { screenAssignments() });
 			}
 		});
 	});
@@ -249,13 +261,8 @@ function buildAssignmentTable(roundNumber) {
 					modal: true
 				});
 			} else { savePairings(); }
-
 		});
 	}
-
-	$(`#round${roundNumber}`).children().children(".saveAssignments").click(() => {
-		saveAssignments();
-	});
 	$(`#round${roundNumber}`).children().children(".editPairings").click(() => {
 		$(`#round${roundNumber}`).children().children(".editPairings").html("Save Pairings");
 		$(`#round${roundNumber}`).children().children(".editPairings").attr("class", "savePairings");
@@ -269,11 +276,41 @@ function buildAssignmentTable(roundNumber) {
 		}
 		attachSavePairingsHandler();
 	});
+	$(`#round${roundNumber}`).children().children(".editAssignments").click(() => {
+		$(`#round${roundNumber}`).children().children(".editAssignments").html("Save Assignments");
+		$(`#round${roundNumber}`).children().children(".editAssignments").attr("class", "saveAssignments");
+		$(`#round${roundNumber}`).children().children(".addJudge").prop("disabled", false);
+		$(`#round${roundNumber}`).children().children(".removeJudge").prop("disabled", false);
+		let rows = $(`#round${roundNumber}`).children("table").children().children("tr");
+		for (let a = 1; a < rows.length; a++) {
+			$(rows[a]).children().children(".judgeSelect").prop("disabled", false);
+		}
+		attachSaveAssignmentsHandler();
+	});
+	attachSaveAssignmentsHandler();
+	function attachSaveAssignmentsHandler() {
+		$(`#round${roundNumber}`).children().children(".saveAssignments").click(() => {
+			if (roundAssignments.length > 0) {
+				let modalHTML = `<div>Judge assignments already exist for this round. Are you sure you want to overwrite them?</div>`;
+				$("#modal").html(modalHTML);
+				$("#modal").dialog({
+					buttons: [
+						{
+							text: "Confirm",
+							click: function () {
+								saveAssignments();
+								$(this).dialog("close");
+							}
+						}
+					],
+					title: "Confirm New Assignments",
+					modal: true
+				});
+			} else { saveAssignments(); }
+		});
+	};
 
 	fillJudgeSelects();
-
-
-
 	function fillJudgeSelects() {
 		getAllJudges().then((judges) => {
 			//first we just fill all the selects with all the names
@@ -304,6 +341,10 @@ function buildAssignmentTable(roundNumber) {
 		});
 	}
 
+	$(".judgeSelect").on("change", function () {
+		screenAssignments();
+	});
+
 	function addPairingRow() {
 		let rowHTML = "<tr>";
 		rowHTML += "<td><input class='room'></td>"
@@ -321,6 +362,9 @@ function buildAssignmentTable(roundNumber) {
 			}
 			"</tr>"
 			$(`#round${roundNumber}`).children("table").append(rowHTML);
+		});
+		$(".judgeSelect").on("change", function () {
+			screenAssignments();
 		});
 	}
 
@@ -343,6 +387,9 @@ function buildAssignmentTable(roundNumber) {
 			for (let a = 1; a < rows.length; a++) {
 				$(rows[a]).append(selectHTML);
 			}
+		});
+		$(".judgeSelect").on("change", function () {
+			screenAssignments();
 		});
 	}
 
@@ -373,7 +420,10 @@ function buildAssignmentTable(roundNumber) {
 			pairings.push(pairing);
 		}
 		let data = JSON.stringify({ "round": roundNumber, "pairings": pairings });
-		$.post("api/pairings/create.php", data, () => { buildAssignmentTable(roundNumber) }, "json");
+		$.post("api/pairings/create.php",
+			data,
+			() => { updatePairings().then(() => { buildAssignmentTable(roundNumber); }); },
+			"json");
 	}
 
 	function saveAssignments() {
@@ -390,32 +440,127 @@ function buildAssignmentTable(roundNumber) {
 			}
 		}
 		let data = JSON.stringify({ "assignments": assignments });
-		$.post("api/assignments/create.php", data, () => {
-			updateAssignments().then(() => { buildAssignmentTable(roundNumber) });
-		}, "json");
+		$.post("api/assignments/create.php",
+			data,
+			() => { updateAssignments().then(() => { buildAssignmentTable(roundNumber); }); },
+			"json");
 	}
 }
 
 function updateJudgeSelects() {
 	getAllJudges().then((judges) => {
+		let judgeSelects = $(".judgeSelect");
 		for (let a = 0; a < judgeSelects.length; a++) {
-			// the selects currently don't have anything in them, then fill them and set their value
-			if ($(judgeSelects[a]).val() === null) {
+			let value = $(judgeSelects[a]).val();
+			let selectHTML = "<option selected value='0'>---</option>";
+			judges.forEach((judge) => {
+				if (judge.id == value) {
+					selectHTML += `<option value ='${judge.id}' selected>${judge.name}</option>`
+				} else {
+					selectHTML += `<option value ='${judge.id}'>${judge.name}</option>`
+				}
 
-			} else { //if the selects alraedy do have values, preserve those values
-				let value = $(judgeSelects[a]).val();
-				let selectHTML = "<option selected value='0'>---</option>";
-				judges.forEach((judge) => {
-					if (judge.id == value) {
-						selectHTML += `<option value ='${judge.id}' selected>${judge.name}</option>`
-					} else {
-						selectHTML += `<option value ='${judge.id}'>${judge.name}</option>`
-					}
+			});
 
-				});
-			}
 		}
 		//
 
 	});
+}
+
+function screenPastRoundConflicts() {
+	return new Promise((resolve, reject) => {
+		Promise.all([updateAssignments(), updatePairings()]).then(() => {
+			let selects = $(".judgeSelect");
+			for (let a = 0; a < selects.length; a++) {
+				let plaintiff = $(selects[a]).parent().parent().children().children(".plaintiff").val();
+				let defense = $(selects[a]).parent().parent().children().children(".defense").val();
+				let judge = $(selects[a]).val();
+				assignments.forEach((assignment) => {
+					let assignmentPlaintiff;
+					let assignmentDefense;
+					let assignmentJudge = assignment.judge;
+					pairings.forEach((pairing) => {
+						if (pairing.id == assignment.pairing) {
+							assignmentPlaintiff = pairing.plaintiff;
+							assignmentDefense = pairing.defense;
+						}
+					});
+					if (assignmentJudge == judge &&
+						(plaintiff == assignmentPlaintiff || plaintiff == assignmentDefense ||
+							defense == assignmentPlaintiff || defense == assignmentDefense)) {
+						$(selects[a]).css("background-color", "#ffff66");
+					}
+				});
+			}
+			resolve();
+		});
+	});
+
+}
+
+function screenAffiliationConflicts() {
+	return new Promise((resolve, reject) => {
+		getAllConflicts().then((conflicts) => {
+			let selects = $(".judgeSelect");
+			for (let a = 0; a < selects.length; a++) {
+				let plaintiff = $(selects[a]).parent().parent().children().children(".plaintiff").val();
+				let defense = $(selects[a]).parent().parent().children().children(".defense").val();
+				let judge = $(selects[a]).val();
+				conflicts.forEach(conflict => {
+					if ((conflict.team == plaintiff || conflict.team == defense) && conflict.judge == judge) {
+						$(selects[a]).css("background-color", "#ffc266");
+					}
+				});
+			}
+			resolve();
+		});
+	});
+}
+
+function screenDoubleAssignments() {
+	let judgeCounts = [];
+	for (let roundNumber = 1; roundNumber < 5; roundNumber++) {
+		let selects = $(`#round${roundNumber}`).children().children().children().children().children("select");
+		for (let a = 0; a < selects.length; a++) {
+			judgeCounts[$(selects[a]).val()] = 0;
+		}
+		for (let a = 0; a < selects.length; a++) {
+			judgeCounts[$(selects[a]).val()]++;
+		}
+		judgeCounts.forEach((judge, index) => {
+			if (judge > 1 && index !== 0) {
+				for (let a = 0; a < selects.length; a++) {
+					if ($(selects[a]).val() == index) {
+						$(selects[a]).css("background-color", "#ff9999");
+					}
+				}
+			}
+		});
+	}
+}
+
+function screenCheckedIn() {
+	let selects = $(".judgeSelect");
+	return new Promise((resolve, reject) => {
+		getAllJudges().then((judges) => {
+			for (let a = 0; a < selects.length; a++) {
+				judges.forEach((judge) => {
+					if ($(selects[a]).val() == judge.id && judge.checkedIn == 0) {
+						$(selects[a]).css("background-color", "#ccffff");
+					}
+				});
+			}
+			resolve();
+		});
+	});
+
+}
+
+async function screenAssignments() {
+	$(".judgeSelect").css("background-color", "#e9e9ed");
+	await screenCheckedIn();
+	await screenPastRoundConflicts();
+	await screenAffiliationConflicts();
+	screenDoubleAssignments();
 }
