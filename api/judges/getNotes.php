@@ -20,14 +20,20 @@
 require_once __DIR__ . "/../../config.php";
 require_once SITE_ROOT . "/database.php";
 
-try {
-	$db = new Database();
-	$conn = $db->getConnection();
-	$stmt = $conn->prepare("SELECT * FROM judges ORDER BY name");
-	$stmt->execute();
-	$result = $stmt->setFetchMode(PDO::FETCH_ASSOC);
-	echo json_encode($stmt->fetchAll());
-} catch (PDOException $e) {
-	echo "Error: " . $e->getMessage();
+if (
+	isset($_GET["judgeId"])
+) {
+	$id = htmlspecialchars(strip_tags($_GET["judgeId"]));
+	try {
+		$db = new Database();
+		$conn = $db->getConnection();
+		$stmt = $conn->prepare("SELECT notes FROM judges WHERE id = :id");
+		$stmt->bindParam(':id', $id);
+		$stmt->execute();
+		$result = $stmt->setFetchMode(PDO::FETCH_ASSOC);
+		echo json_encode($stmt->fetchAll());
+	} catch (PDOException $e) {
+		echo "Error: " . $e->getMessage();
+	}
+	$conn = null;
 }
-$conn = null;

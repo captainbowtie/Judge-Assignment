@@ -69,7 +69,17 @@ function createJudgeRow(judge) {
 	rowHTML += "</td><td>";
 	rowHTML += "<button class='deleteJudge'>Delete</button>";
 	rowHTML += "</td><td>";
+	rowHTML += "<button class='notes'>Notes</button>";
+	rowHTML += "</td><td>";
 	rowHTML += `<input type='checkbox' class='checkIn' ${(judge.checkedIn == 1) ? 'checked' : ''}>`;
+	rowHTML += "</td><td>";
+	rowHTML += `<input type='checkbox' class='round1' ${(judge.round1 == 1) ? 'checked' : ''}>`;
+	rowHTML += "</td><td>";
+	rowHTML += `<input type='checkbox' class='round2' ${(judge.round2 == 1) ? 'checked' : ''}>`;
+	rowHTML += "</td><td>";
+	rowHTML += `<input type='checkbox' class='round3' ${(judge.round3 == 1) ? 'checked' : ''}>`;
+	rowHTML += "</td><td>";
+	rowHTML += `<input type='checkbox' class='round4' ${(judge.round4 == 1) ? 'checked' : ''}>`;
 	rowHTML += "</td></tr>"
 
 	return rowHTML;
@@ -81,7 +91,7 @@ function createConflictRow(conflict) {
 }
 
 function fillTable(judges) {
-	let tableHTML = "";
+	let tableHTML = "<tr><th>Name</th><th>Category</th><th>Conflicts</th><th>Delete</th><th>Notes</th><th>Check In</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th></tr>";
 	function appendHTML(judge) {
 		tableHTML += createJudgeRow(judge);
 	}
@@ -110,6 +120,22 @@ function fillTable(judges) {
 		}
 	});
 
+	for (let a = 1; a <= 4; a++) {
+		$(`.round${a}`).on("change", function () {
+			let id = $(this).parent().parent().attr("id");
+			let round = $(this).attr('class').substring(5);
+			let availability;
+			if ($(this).prop("checked")) {
+				availability = 1;
+			} else {
+				availability = 0;
+			}
+
+			updateAvailability(id, round, availability);
+		});
+	}
+
+
 	$(".deleteJudge").click(function () {
 		//generate modal HTML
 		let id = $(this).parent().parent().attr("id");
@@ -135,10 +161,15 @@ function fillTable(judges) {
 	});
 
 	$(".conflicts").click(function () {
-		//get conflict list
 		let id = $(this).parent().parent().attr("id");
 		let name = $(this).parent().parent().children().children(".name").val();
 		conflictModal(id, name);
+	});
+
+	$(".notes").click(function () {
+		let id = $(this).parent().parent().attr("id");
+		let name = $(this).parent().parent().children().children(".name").val();
+		notesModal(id, name);
 	});
 }
 
@@ -173,6 +204,30 @@ function conflictModal(id, name) {
 		$("#addConflict").click(function () {
 			createConflict(id, $("#conflictInput").val());
 			conflictModal(id, name);
+		});
+	});
+}
+
+function notesModal(id, name) {
+	getNotes(id).then((notes) => {
+		//generate HTML from that list
+		let modalHTML = `<textarea id='modalNotesArea'>${notes[0].notes}</textarea>`;
+
+		//display HTML in the modal
+		$("#modal").html(modalHTML);
+		$("#modal").dialog({
+			buttons: [
+				{
+					text: "Save",
+					click: function () {
+						let updatedNotes = $("#modalNotesArea").val();
+						updateNotes(id, updatedNotes);
+						$(this).dialog("close");
+					}
+				}
+			],
+			title: `${name} - Notes`,
+			modal: true
 		});
 	});
 }
@@ -216,4 +271,34 @@ function createConflict(judgeId, teamNumber) {
 
 function createJudge(name, category) {
 	$.post("api/judges/create.php", { "name": name, "category": category }, "json");
+}
+
+function updateAvailability(id, round, availabiity) {
+	$.post("api/judges/updateAvailability.php",
+		{
+			"id": id,
+			"round": round,
+			"availability": availabiity
+		},
+		"json");
+}
+
+function updateNotes(id, notes) {
+	$.post("api/judges/updateNotes.php",
+		{
+			"id": id,
+			"notes": notes
+		},
+		"json");
+}
+
+function getNotes(judgeId) {
+	return new Promise((resolve, reject) => {
+		$.get("api/judges/getNotes.php",
+			{ "judgeId": judgeId },
+			function (notes) {
+				resolve(notes);
+			},
+			"json");
+	});
 }

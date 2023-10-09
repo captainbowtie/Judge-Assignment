@@ -18,10 +18,10 @@ let pairings;
 let assignments;
 
 $(document).ready(function () {
-	updateJudges();
 	setInterval(function () { updateJudges(); }, 10000);
 	$("#assignments").tabs();
 	Promise.all([updatePairings(), updateAssignments()]).then(() => {
+		updateJudges();
 		for (let a = 0; a < 4; a++) {
 			buildAssignmentTable(a + 1);
 		}
@@ -95,10 +95,35 @@ function checkOut(id) {
 
 function updateJudges() {
 	getAllJudges().then((judges) => {
-		let tableHTML = "<table>";
+		//sort judges into those anticipated for current round and everyone else
+		let currentRound = 1;
+		pairings.forEach(pairing => {
+			if (pairing.round > currentRound) {
+				currentRound = pairing.round;
+			}
+		});
+		let roundJudges = [];
+		let nonroundJudges = [];
 		judges.forEach((judge) => {
+			if (judge[`round${currentRound}`] == true) {
+				roundJudges.push(judge);
+			} else {
+				nonroundJudges.push(judge);
+			}
+		});
+
+		//create HTML with black line between available and unavailable judges
+		let tableHTML = "<table>";
+		roundJudges.forEach((judge) => {
 			tableHTML += "<tr>";
-			tableHTML += `<td>${judge.name}</td>`;
+			tableHTML += `<td title='${judge.notes}'>${judge.name}</td>`;
+			tableHTML += `<td><input type='checkbox' class='checkIn' judge='${judge.id}' ${(judge.checkedIn == 1) ? 'checked' : ''}></td>`;
+			tableHTML += "</tr>";
+		});
+		tableHTML += "<tr><td><hr></td><td></td></tr>";
+		nonroundJudges.forEach((judge) => {
+			tableHTML += "<tr>";
+			tableHTML += `<td title='${judge.notes}'>${judge.name}</td>`;
 			tableHTML += `<td><input type='checkbox' class='checkIn' judge='${judge.id}' ${(judge.checkedIn == 1) ? 'checked' : ''}></td>`;
 			tableHTML += "</tr>";
 		});
@@ -225,6 +250,7 @@ function buildAssignmentTable(roundNumber) {
 	} else {
 		buttonHTML += "<button class='saveAssignments'>Save Assignments</button>";
 	}
+	buttonHTML += "<button class='generateAssignments'>Generate Assignments</button>"
 	buttonHTML += "</div>"
 
 	$(`#round${roundNumber}`).html(tableHTML + buttonHTML);
@@ -309,6 +335,9 @@ function buildAssignmentTable(roundNumber) {
 			} else { saveAssignments(); }
 		});
 	};
+	$(`#round${roundNumber}`).children().children(".generateAssignments").click(() => {
+		generateAssignments();
+	});
 
 	fillJudgeSelects();
 	function fillJudgeSelects() {
@@ -445,6 +474,39 @@ function buildAssignmentTable(roundNumber) {
 			() => { updateAssignments().then(() => { buildAssignmentTable(roundNumber); }); },
 			"json");
 	}
+	function generateAssignments() {
+		getAllJudges().then((judges) => {
+			//filter judges round availabiity
+			let filteredJudges = filterJudges(judges);
+			//get selects
+			$(`#round${roundNumber}`).children().children().children().children().children(".judgeSelect").val(0);
+			let selects = $(`#round${roundNumber}`).children().children().children().children().children(".judgeSelect");
+			//shuffle the selects
+			let shuffledSelects = shuffle(selects);
+			//shuffle the judges
+			let shuffledJudges = shuffle(filteredJudges);
+			//fill selects until they're all full or we run out of judges
+			for (let a = 0; a < shuffledSelects.length; a++) {
+				if (a < shuffledJudges.length) {
+					$(shuffledSelects[a]).val(shuffledJudges[a].id);
+				}
+			}
+			screenAssignments();
+			//screen the assignments for conflicts
+			//if there are conflicts, try again
+			//if there aren't conflicts, display the assignments
+		});
+
+		function filterJudges(judges) {
+			let filteredJudges = [];
+			judges.forEach((judge) => {
+				if (judge[`round${roundNumber}`] == true || judge["checkedIn"] == true) {
+					filteredJudges.push(judge);
+				}
+			});
+			return filteredJudges;
+		}
+	}
 }
 
 function updateJudgeSelects() {
@@ -471,6 +533,7 @@ function updateJudgeSelects() {
 function screenPastRoundConflicts() {
 	return new Promise((resolve, reject) => {
 		Promise.all([updateAssignments(), updatePairings()]).then(() => {
+			let assignmentsValid = true;
 			let selects = $(".judgeSelect");
 			for (let a = 0; a < selects.length; a++) {
 				let plaintiff = $(selects[a]).parent().parent().children().children(".plaintiff").val();
@@ -490,10 +553,12 @@ function screenPastRoundConflicts() {
 						(plaintiff == assignmentPlaintiff || plaintiff == assignmentDefense ||
 							defense == assignmentPlaintiff || defense == assignmentDefense)) {
 						$(selects[a]).css("background-color", "#ffff66");
+						$(selects[a]).attr("title", "Judge has perviously judged assigned teams.");
+						assignmentsValid = false;
 					}
 				});
 			}
-			resolve();
+			resolve(assignmentsValid);
 		});
 	});
 
@@ -502,6 +567,7 @@ function screenPastRoundConflicts() {
 function screenAffiliationConflicts() {
 	return new Promise((resolve, reject) => {
 		getAllConflicts().then((conflicts) => {
+			let assignmentsValid = true;
 			let selects = $(".judgeSelect");
 			for (let a = 0; a < selects.length; a++) {
 				let plaintiff = $(selects[a]).parent().parent().children().children(".plaintiff").val();
@@ -510,15 +576,18 @@ function screenAffiliationConflicts() {
 				conflicts.forEach(conflict => {
 					if ((conflict.team == plaintiff || conflict.team == defense) && conflict.judge == judge) {
 						$(selects[a]).css("background-color", "#ffc266");
+						$(selects[a]).attr("title", "Judge has an affiliation conflict.");
+						assignmentsValid = false;
 					}
 				});
 			}
-			resolve();
+			resolve(assignmentsValid);
 		});
 	});
 }
 
 function screenDoubleAssignments() {
+	let assignmentsValid = true;
 	let judgeCounts = [];
 	for (let roundNumber = 1; roundNumber < 5; roundNumber++) {
 		let selects = $(`#round${roundNumber}`).children().children().children().children().children("select");
@@ -533,25 +602,31 @@ function screenDoubleAssignments() {
 				for (let a = 0; a < selects.length; a++) {
 					if ($(selects[a]).val() == index) {
 						$(selects[a]).css("background-color", "#ff9999");
+						$(selects[a]).attr("title", "Judge is assigned to multiple rounds.");
+						assignmentsValid = false;
 					}
 				}
 			}
 		});
 	}
+	return assignmentsValid;
 }
 
 function screenCheckedIn() {
 	let selects = $(".judgeSelect");
 	return new Promise((resolve, reject) => {
 		getAllJudges().then((judges) => {
+			let assignmentsValid = true;
 			for (let a = 0; a < selects.length; a++) {
 				judges.forEach((judge) => {
 					if ($(selects[a]).val() == judge.id && judge.checkedIn == 0) {
 						$(selects[a]).css("background-color", "#ccffff");
+						$(selects[a]).attr("title", "Judge is not checked in.");
+						assignmentsValid = false;
 					}
 				});
 			}
-			resolve();
+			resolve(assignmentsValid);
 		});
 	});
 
@@ -560,7 +635,32 @@ function screenCheckedIn() {
 async function screenAssignments() {
 	$(".judgeSelect").css("background-color", "#e9e9ed");
 	await screenCheckedIn();
-	await screenPastRoundConflicts();
-	await screenAffiliationConflicts();
-	screenDoubleAssignments();
+	let pastRoundValid = await screenPastRoundConflicts();
+	let affiliationsValid = await screenAffiliationConflicts();
+	let doubleAssigmentsValid = screenDoubleAssignments();
+	$(".judgeSelect").tooltip();
+	if (pastRoundValid && affiliationsValid && doubleAssigmentsValid) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+function shuffle(array) {
+	//CC BY-SA 4.0 https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+	let currentIndex = array.length, randomIndex;
+
+	// While there remain elements to shuffle.
+	while (currentIndex != 0) {
+
+		// Pick a remaining element.
+		randomIndex = Math.floor(Math.random() * currentIndex);
+		currentIndex--;
+
+		// And swap it with the current element.
+		[array[currentIndex], array[randomIndex]] = [
+			array[randomIndex], array[currentIndex]];
+	}
+
+	return array;
 }
