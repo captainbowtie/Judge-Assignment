@@ -130,6 +130,8 @@ function updateJudges() {
 		tableHTML += "</table>";
 		$("#judges").html(tableHTML);
 
+		highlightAssigned();
+
 		$(".checkIn").on("change", function () {
 			let id = $(this).attr("judge");
 			if ($(this).prop("checked")) {
@@ -370,8 +372,9 @@ function buildAssignmentTable(roundNumber) {
 		});
 	}
 
-	$(".judgeSelect").on("change", function () {
+	$("body").on("change", ".judgeSelect", function () {
 		screenAssignments();
+		highlightAssigned();
 	});
 
 	function addPairingRow() {
@@ -663,4 +666,28 @@ function shuffle(array) {
 	}
 
 	return array;
+}
+
+function highlightAssigned() {
+	//determine current round so only judges assigned in that round are highlighted
+	let currentRound = 1;
+	pairings.forEach(pairing => {
+		if (pairing.round > currentRound) {
+			currentRound = pairing.round;
+		}
+	});
+
+	let currentRoundSelects = $(`#round${currentRound}`).children().children().children().children().children(".judgeSelect");
+	let checkIns = $(".checkIn");
+
+	for (let a = 0; a < checkIns.length; a++) {
+		$($(".checkIn")[a]).parent().parent().css("background-color", "#ffffff");
+		let checkInValue = $(checkIns[a]).attr("judge");
+		for (let b = 0; b < currentRoundSelects.length; b++) {
+			let selectValue = $(currentRoundSelects[b]).val();
+			if (checkInValue == selectValue) {
+				$($(".checkIn")[a]).parent().parent().css("background-color", "#ccffcc");
+			}
+		}
+	}
 }
