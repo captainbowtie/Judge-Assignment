@@ -19,37 +19,41 @@
 
 require_once __DIR__ . "/../../config.php";
 require_once SITE_ROOT . "/database.php";
+session_start();
+if ($_SESSION["isAdmin"]) {
+	if (
+		isset($_POST["judge"]) &&
+		isset($_POST["team"])
+	) {
+		$judge = htmlspecialchars(strip_tags($_POST["judge"]));
+		$team = htmlspecialchars(strip_tags($_POST["team"]));
 
-if (
-	isset($_POST["judge"]) &&
-	isset($_POST["team"])
-) {
-	$judge = htmlspecialchars(strip_tags($_POST["judge"]));
-	$team = htmlspecialchars(strip_tags($_POST["team"]));
+		if (createConflict($judge, $team)) {
+			// set response code - 201 created
+			http_response_code(201);
 
-	if (createConflict($judge, $team)) {
-		// set response code - 201 created
-		http_response_code(201);
+			// tell the user
+			echo json_encode(array("message" => 0));
+		} else {
 
-		// tell the user
-		echo json_encode(array("message" => 0));
+			// set response code - 503 service unavailable
+			http_response_code(503);
+
+			// tell the user
+			echo json_encode(array("message" => "Unable to create conflict."));
+		}
 	} else {
 
-		// set response code - 503 service unavailable
-		http_response_code(503);
+		// set response code - 400 bad request
+		http_response_code(400);
 
 		// tell the user
-		echo json_encode(array("message" => "Unable to create conflict."));
+		echo json_encode(array("message" => "Unable to create conflict. Data is incomplete."));
 	}
 } else {
-
-	// set response code - 400 bad request
-	http_response_code(400);
-
-	// tell the user
-	echo json_encode(array("message" => "Unable to create conflict. Data is incomplete."));
+	$_SESSION["isAdmin"] = false;
+	echo json_encode(array("message" => -1));
 }
-
 function createConflict($judge, $team)
 {
 

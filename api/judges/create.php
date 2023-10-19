@@ -19,35 +19,40 @@
 
 require_once __DIR__ . "/../../config.php";
 require_once SITE_ROOT . "/database.php";
+session_start();
+if ($_SESSION["isAdmin"]) {
+	if (
+		isset($_POST["name"]) &&
+		isset($_POST["category"])
+	) {
+		$name = htmlspecialchars(strip_tags($_POST["name"]));
+		$category = htmlspecialchars(strip_tags($_POST["category"]));
 
-if (
-	isset($_POST["name"]) &&
-	isset($_POST["category"])
-) {
-	$name = htmlspecialchars(strip_tags($_POST["name"]));
-	$category = htmlspecialchars(strip_tags($_POST["category"]));
+		if (createJudge($name, $category)) {
+			// set response code - 201 created
+			http_response_code(201);
 
-	if (createJudge($name, $category)) {
-		// set response code - 201 created
-		http_response_code(201);
+			// tell the user
+			echo json_encode(array("message" => 0));
+		} else {
 
-		// tell the user
-		echo json_encode(array("message" => 0));
+			// set response code - 503 service unavailable
+			http_response_code(503);
+
+			// tell the user
+			echo json_encode(array("message" => "Unable to create judge."));
+		}
 	} else {
 
-		// set response code - 503 service unavailable
-		http_response_code(503);
+		// set response code - 400 bad request
+		http_response_code(400);
 
 		// tell the user
-		echo json_encode(array("message" => "Unable to create judge."));
+		echo json_encode(array("message" => "Unable to create judge. Data is incomplete."));
 	}
 } else {
-
-	// set response code - 400 bad request
-	http_response_code(400);
-
-	// tell the user
-	echo json_encode(array("message" => "Unable to create judge. Data is incomplete."));
+	$_SESSION["isAdmin"] = false;
+	echo json_encode(array("message" => -1));
 }
 
 function createJudge($name, $category)

@@ -19,21 +19,26 @@
 
 require_once __DIR__ . "/../../config.php";
 require_once SITE_ROOT . "/database.php";
-
-if (
-	isset($_GET["judgeId"])
-) {
-	$id = htmlspecialchars(strip_tags($_GET["judgeId"]));
-	try {
-		$db = new Database();
-		$conn = $db->getConnection();
-		$stmt = $conn->prepare("SELECT notes FROM judges WHERE id = :id");
-		$stmt->bindParam(':id', $id);
-		$stmt->execute();
-		$result = $stmt->setFetchMode(PDO::FETCH_ASSOC);
-		echo json_encode($stmt->fetchAll());
-	} catch (PDOException $e) {
-		echo "Error: " . $e->getMessage();
+session_start();
+if ($_SESSION["isAdmin"]) {
+	if (
+		isset($_GET["judgeId"])
+	) {
+		$id = htmlspecialchars(strip_tags($_GET["judgeId"]));
+		try {
+			$db = new Database();
+			$conn = $db->getConnection();
+			$stmt = $conn->prepare("SELECT notes FROM judges WHERE id = :id");
+			$stmt->bindParam(':id', $id);
+			$stmt->execute();
+			$result = $stmt->setFetchMode(PDO::FETCH_ASSOC);
+			echo json_encode($stmt->fetchAll());
+		} catch (PDOException $e) {
+			echo "Error: " . $e->getMessage();
+		}
+		$conn = null;
 	}
-	$conn = null;
+} else {
+	$_SESSION["isAdmin"] = false;
+	echo json_encode(array("message" => -1));
 }

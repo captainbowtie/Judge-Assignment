@@ -17,22 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-require_once __DIR__ . "/../../config.php";
-require_once SITE_ROOT . "/database.php";
-session_start();
-if ($_SESSION["isAdmin"]) {
-	try {
-		$db = new Database();
-		$conn = $db->getConnection();
-		$stmt = $conn->prepare("SELECT * FROM judges ORDER BY name");
-		$stmt->execute();
-		$result = $stmt->setFetchMode(PDO::FETCH_ASSOC);
-		echo json_encode($stmt->fetchAll());
-	} catch (PDOException $e) {
-		echo "Error: " . $e->getMessage();
+if (
+	isset($_POST["password"])
+) {
+	$password = $_POST["password"];
+	$hash = hash("sha512", $password);
+	if ($hash == "faa1637700db70020a5cd82f3b5663479f4d7b3b67a9c871a79c9ee5fb450437c4ffd29c4e3c0b0911e7a637a578fe747ca5370e14baaffe24732b3e3f1cbaf3") {
+		session_start();
+		$_SESSION["isAdmin"] = true;
+		echo json_encode(array("message" => 0));
+	} else {
+		echo json_encode(array("message" => 1));
 	}
-	$conn = null;
-} else {
-	$_SESSION["isAdmin"] = false;
-	echo json_encode(array("message" => -1));
 }

@@ -19,23 +19,26 @@
 
 require_once __DIR__ . "/../../config.php";
 require_once SITE_ROOT . "/database.php";
+session_start();
+if ($_SESSION["isAdmin"]) {
+	if (
+		isset($_GET["judgeId"])
+	) {
+		$judgeId = htmlspecialchars(strip_tags($_GET["judgeId"]));
 
-if (
-	isset($_GET["judgeId"])
-) {
-	$judgeId = htmlspecialchars(strip_tags($_GET["judgeId"]));
+		getConflicts($judgeId);
+	} else {
 
-	getConflicts($judgeId);
+		// set response code - 400 bad request
+		http_response_code(400);
+
+		// tell the user
+		echo json_encode(array("message" => "Unable to get conflicts. Data is incomplete."));
+	}
 } else {
-
-	// set response code - 400 bad request
-	http_response_code(400);
-
-	// tell the user
-	echo json_encode(array("message" => "Unable to get conflicts. Data is incomplete."));
+	$_SESSION["isAdmin"] = false;
+	echo json_encode(array("message" => -1));
 }
-
-
 function getConflicts($judgeId)
 {
 	try {

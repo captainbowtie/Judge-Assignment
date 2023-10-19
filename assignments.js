@@ -534,6 +534,14 @@ function updateJudgeSelects() {
 }
 
 function screenPastRoundConflicts() {
+	//determine current round
+	let currentRound = 1;
+	pairings.forEach(pairing => {
+		if (pairing.round > currentRound) {
+			currentRound = pairing.round;
+		}
+	});
+
 	return new Promise((resolve, reject) => {
 		Promise.all([updateAssignments(), updatePairings()]).then(() => {
 			let assignmentsValid = true;
@@ -546,13 +554,18 @@ function screenPastRoundConflicts() {
 					let assignmentPlaintiff;
 					let assignmentDefense;
 					let assignmentJudge = assignment.judge;
+					let isCurrentRoundAssignment = false; //flag to ignore assignment if it is from current round
 					pairings.forEach((pairing) => {
 						if (pairing.id == assignment.pairing) {
 							assignmentPlaintiff = pairing.plaintiff;
 							assignmentDefense = pairing.defense;
 						}
+						if (pairing.round == currentRound) {
+							isCurrentRoundAssignment = true;
+						}
 					});
-					if (assignmentJudge == judge &&
+
+					if (!isCurrentRoundAssignment && assignmentJudge == judge &&
 						(plaintiff == assignmentPlaintiff || plaintiff == assignmentDefense ||
 							defense == assignmentPlaintiff || defense == assignmentDefense)) {
 						$(selects[a]).css("background-color", "#ffff66");

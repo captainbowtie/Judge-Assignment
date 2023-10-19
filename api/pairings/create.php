@@ -20,44 +20,48 @@
 require_once __DIR__ . "/../../config.php";
 require_once SITE_ROOT . "/database.php";
 $_POST = json_decode(file_get_contents('php://input'), true);
+session_start();
+if ($_SESSION["isAdmin"]) {
+	if (
+		isset($_POST["round"]) &&
+		isset($_POST["pairings"])
+	) {
+		$round = htmlspecialchars(strip_tags($_POST["round"]));
+		$pairings = array();
+		foreach ($_POST["pairings"] as &$pairing) {
+			$room = htmlspecialchars(strip_tags($pairing["room"]));
+			$plaintiff = htmlspecialchars(strip_tags($pairing["plaintiff"]));
+			$defense = htmlspecialchars(strip_tags($pairing["defense"]));
+			array_push($pairings, array("room" => $room, "plaintiff" => $plaintiff, "defense" => $defense));
+		}
 
-if (
-	isset($_POST["round"]) &&
-	isset($_POST["pairings"])
-) {
-	$round = htmlspecialchars(strip_tags($_POST["round"]));
-	$pairings = array();
-	foreach ($_POST["pairings"] as &$pairing) {
-		$room = htmlspecialchars(strip_tags($pairing["room"]));
-		$plaintiff = htmlspecialchars(strip_tags($pairing["plaintiff"]));
-		$defense = htmlspecialchars(strip_tags($pairing["defense"]));
-		array_push($pairings, array("room" => $room, "plaintiff" => $plaintiff, "defense" => $defense));
-	}
 
+		if (createPairings($round, $pairings)) {
+			// set response code - 201 created
+			http_response_code(201);
 
-	if (createPairings($round, $pairings)) {
-		// set response code - 201 created
-		http_response_code(201);
+			// tell the user
+			echo json_encode(array("message" => 0));
+		} else {
 
-		// tell the user
-		echo json_encode(array("message" => 0));
+			// set response code - 503 service unavailable
+			http_response_code(503);
+
+			// tell the user
+			echo json_encode(array("message" => "Unable to create pairings."));
+		}
 	} else {
 
-		// set response code - 503 service unavailable
-		http_response_code(503);
+		// set response code - 400 bad request
+		http_response_code(400);
 
 		// tell the user
-		echo json_encode(array("message" => "Unable to create pairings."));
+		echo json_encode(array("message" => "Unable to create pairings. Data is incomplete."));
 	}
 } else {
-
-	// set response code - 400 bad request
-	http_response_code(400);
-
-	// tell the user
-	echo json_encode(array("message" => "Unable to create pairings. Data is incomplete."));
+	$_SESSION["isAdmin"] = false;
+	echo json_encode(array("message" => -1));
 }
-
 function createPairings($round, $pairings)
 {
 

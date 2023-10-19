@@ -25,10 +25,10 @@
 class Database
 {
 
-	private $host = "dev-mariadb";
-	private $database = "db";
-	private $username = "user";
-	private $password = "password";
+	private $host = "localhost";
+	private $database = "tournament";
+	private $username = "tournamentUser";
+	private $password = "tournamentPassword";
 	public $conn;
 
 	// get the database connection

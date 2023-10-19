@@ -21,40 +21,45 @@ require_once __DIR__ . "/../../config.php";
 require_once SITE_ROOT . "/database.php";
 $_POST = json_decode(file_get_contents('php://input'), true);
 
-if (
-	isset($_POST["assignments"])
-) {
-	$assignments = array();
-	foreach ($_POST["assignments"] as &$assignment) {
-		$pairing = htmlspecialchars(strip_tags($assignment["pairing"]));
-		$judge = htmlspecialchars(strip_tags($assignment["judge"]));
-		array_push($assignments, array("pairing" => $pairing, "judge" => $judge));
-	}
+session_start();
+if ($_SESSION["isAdmin"]) {
+	if (
+		isset($_POST["assignments"])
+	) {
+		$assignments = array();
+		foreach ($_POST["assignments"] as &$assignment) {
+			$pairing = htmlspecialchars(strip_tags($assignment["pairing"]));
+			$judge = htmlspecialchars(strip_tags($assignment["judge"]));
+			array_push($assignments, array("pairing" => $pairing, "judge" => $judge));
+		}
 
 
-	if (createAssignments($assignments)) {
-		// set response code - 201 created
-		http_response_code(201);
+		if (createAssignments($assignments)) {
+			// set response code - 201 created
+			http_response_code(201);
 
-		// tell the user
-		echo json_encode(array("message" => 0));
+			// tell the user
+			echo json_encode(array("message" => 0));
+		} else {
+
+			// set response code - 503 service unavailable
+			http_response_code(503);
+
+			// tell the user
+			echo json_encode(array("message" => "Unable to create assignments."));
+		}
 	} else {
 
-		// set response code - 503 service unavailable
-		http_response_code(503);
+		// set response code - 400 bad request
+		http_response_code(400);
 
 		// tell the user
-		echo json_encode(array("message" => "Unable to create assignments."));
+		echo json_encode(array("message" => "Unable to create assignments. Data is incomplete."));
 	}
 } else {
-
-	// set response code - 400 bad request
-	http_response_code(400);
-
-	// tell the user
-	echo json_encode(array("message" => "Unable to create assignments. Data is incomplete."));
+	$_SESSION["isAdmin"] = false;
+	echo json_encode(array("message" => -1));
 }
-
 function createAssignments($assignments)
 {
 

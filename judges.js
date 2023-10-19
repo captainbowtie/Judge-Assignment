@@ -23,7 +23,11 @@ function getJudges() {
 	return new Promise((resolve, reject) => {
 		$.get("api/judges/getAll.php",
 			function (judges) {
-				resolve(judges);
+				if (judges.message == -1) {
+					handleSessionExpiration();
+				} else {
+					resolve(judges);
+				}
 			},
 			"json");
 	});
@@ -34,7 +38,11 @@ function getJudgeConflicts(judgeId) {
 		$.get("api/conflicts/getByJudge.php",
 			{ "judgeId": judgeId },
 			function (conflicts) {
-				resolve(conflicts);
+				if (conflicts.message == -1) {
+					handleSessionExpiration();
+				} else {
+					resolve(conflicts);
+				}
 			},
 			"json");
 	});
@@ -242,35 +250,91 @@ $("#addJudge").click(function () {
 });
 
 function updateName(id, name) {
-	$.post("api/judges/updateName.php", { "id": id, "name": name }, "json");
+	$.post("api/judges/updateName.php",
+		{ "id": id, "name": name },
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
+		},
+		"json");
 }
 
 function updateCategory(id, category) {
-	$.post("api/judges/updateCategory.php", { "id": id, "category": category }, "json");
+	$.post("api/judges/updateCategory.php",
+		{ "id": id, "category": category },
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
+		},
+		"json");
 }
 
 function checkIn(id) {
-	$.post("api/judges/checkIn.php", { "id": id }, "json");
+	$.post("api/judges/checkIn.php",
+		{ "id": id },
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
+		},
+		"json");
 }
 
 function checkOut(id) {
-	$.post("api/judges/checkOut.php", { "id": id }, "json");
+	$.post("api/judges/checkOut.php",
+		{ "id": id },
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
+		},
+		"json");
 }
 
 function deleteJudge(id) {
-	$.post("api/judges/delete.php", { "id": id }, "json");
+	$.post("api/judges/delete.php",
+		{ "id": id },
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
+		},
+		"json");
 }
 
 function deleteConflict(id) {
-	$.post("api/conflicts/delete.php", { "id": id }, "json");
+	$.post("api/conflicts/delete.php",
+		{ "id": id },
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
+		},
+		"json");
 }
 
 function createConflict(judgeId, teamNumber) {
-	$.post("api/conflicts/create.php", { "judge": judgeId, "team": teamNumber }, "json");
+	$.post("api/conflicts/create.php",
+		{ "judge": judgeId, "team": teamNumber },
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
+		},
+		"json");
 }
 
 function createJudge(name, category) {
-	$.post("api/judges/create.php", { "name": name, "category": category }, "json");
+	$.post("api/judges/create.php",
+		{ "name": name, "category": category },
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
+		},
+		"json");
 }
 
 function updateAvailability(id, round, availabiity) {
@@ -279,6 +343,11 @@ function updateAvailability(id, round, availabiity) {
 			"id": id,
 			"round": round,
 			"availability": availabiity
+		},
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
 		},
 		"json");
 }
@@ -289,6 +358,11 @@ function updateNotes(id, notes) {
 			"id": id,
 			"notes": notes
 		},
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
+		},
 		"json");
 }
 
@@ -297,8 +371,17 @@ function getNotes(judgeId) {
 		$.get("api/judges/getNotes.php",
 			{ "judgeId": judgeId },
 			function (notes) {
-				resolve(notes);
+				if (notes.message == -1) {
+					handleSessionExpiration();
+				} else {
+					resolve(notes);
+				}
 			},
 			"json");
 	});
+}
+
+function handleSessionExpiration() {
+	let html = "User session expired. Please login again <a href='index.html'>here</a>."
+	$("body").html(html);
 }

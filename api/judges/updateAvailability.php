@@ -19,39 +19,43 @@
 
 require_once __DIR__ . "/../../config.php";
 require_once SITE_ROOT . "/database.php";
+session_start();
+if ($_SESSION["isAdmin"]) {
+	if (
+		isset($_POST["id"]) &&
+		isset($_POST["round"]) &&
+		isset($_POST["availability"])
+	) {
+		$id = htmlspecialchars(strip_tags($_POST["id"]));
+		$round = htmlspecialchars(strip_tags($_POST["round"]));
+		$availability = htmlspecialchars(strip_tags($_POST["availability"]));
 
-if (
-	isset($_POST["id"]) &&
-	isset($_POST["round"]) &&
-	isset($_POST["availability"])
-) {
-	$id = htmlspecialchars(strip_tags($_POST["id"]));
-	$round = htmlspecialchars(strip_tags($_POST["round"]));
-	$availability = htmlspecialchars(strip_tags($_POST["availability"]));
+		if (updateJudge($id, $round, $availability)) {
+			// set response code - 201 created
+			http_response_code(201);
 
-	if (updateJudge($id, $round, $availability)) {
-		// set response code - 201 created
-		http_response_code(201);
+			// tell the user
+			echo json_encode(array("message" => 0));
+		} else {
 
-		// tell the user
-		echo json_encode(array("message" => 0));
+			// set response code - 503 service unavailable
+			http_response_code(503);
+
+			// tell the user
+			echo json_encode(array("message" => "Unable to update judge."));
+		}
 	} else {
 
-		// set response code - 503 service unavailable
-		http_response_code(503);
+		// set response code - 400 bad request
+		http_response_code(400);
 
 		// tell the user
-		echo json_encode(array("message" => "Unable to update judge."));
+		echo json_encode(array("message" => "Unable to update judge. Data is incomplete."));
 	}
 } else {
-
-	// set response code - 400 bad request
-	http_response_code(400);
-
-	// tell the user
-	echo json_encode(array("message" => "Unable to update judge. Data is incomplete."));
+	$_SESSION["isAdmin"] = false;
+	echo json_encode(array("message" => -1));
 }
-
 function updateJudge($id, $round, $availability)
 {
 
