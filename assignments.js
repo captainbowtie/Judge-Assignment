@@ -559,9 +559,9 @@ function screenPastRoundConflicts() {
 						if (pairing.id == assignment.pairing) {
 							assignmentPlaintiff = pairing.plaintiff;
 							assignmentDefense = pairing.defense;
-						}
-						if (pairing.round == currentRound) {
-							isCurrentRoundAssignment = true;
+							if (pairing.round == currentRound) {
+								isCurrentRoundAssignment = true;
+							}
 						}
 					});
 
