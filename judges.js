@@ -245,8 +245,6 @@ $("#addJudge").click(function () {
 	let category = $("#newJudgeCategory").val();
 	if (category == 0) { category = 1 };
 	createJudge(name, category);
-	getJudges().then((judges) => fillTable(judges));
-	$("#newJudgeName").val("");
 });
 
 function updateName(id, name) {
@@ -332,6 +330,9 @@ function createJudge(name, category) {
 		function (response) {
 			if (response.message == -1) {
 				handleSessionExpiration();
+			} else {
+				getJudges().then((judges) => fillTable(judges));
+				$("#newJudgeName").val("");
 			}
 		},
 		"json");

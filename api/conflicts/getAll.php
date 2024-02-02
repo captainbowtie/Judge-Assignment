@@ -20,7 +20,7 @@
 require_once __DIR__ . "/../../config.php";
 require_once SITE_ROOT . "/database.php";
 session_start();
-if ($_SESSION["isAdmin"]) {
+if ($_SESSION["isAdmin"] || $_SESSION["isUser"]) {
 	try {
 		$db = new Database();
 		$conn = $db->getConnection();
