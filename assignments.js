@@ -189,7 +189,7 @@ function buildAssignmentTable(roundNumber) {
 
 	//table headers
 	let tableHTML = "<table>";
-	tableHTML += "<tr><th id='rankHeader'>Rank</th><th>Room</th><th>π</th><th>∆</th>";
+	tableHTML += "<tr><th class='rankHeader'>Rank</th><th>Room</th><th>π</th><th>∆</th>";
 	for (let a = 0; a < maxJudgesPerPairing; a++) {
 		tableHTML += `<th>Judge ${a + 1}</th>`
 	}
@@ -258,18 +258,22 @@ function buildAssignmentTable(roundNumber) {
 
 	$(`#round${roundNumber}`).html(tableHTML + buttonHTML);
 
-	$(`#round${roundNumber}`).children().children(".addPairing").click(() => {
+	$(`#round${roundNumber}`).find(".addPairing").click(() => {
 		addPairingRow();
 	});
-	$(`#round${roundNumber}`).children().children(".removePairing").click(() => {
+	$(`#round${roundNumber}`).find(".removePairing").click(() => {
 		removePairingRow();
 	});
-	$(`#round${roundNumber}`).children().children(".addJudge").click(() => {
+	$(`#round${roundNumber}`).find(".addJudge").click(() => {
 		addJudgeColumn();
 	});
-	$(`#round${roundNumber}`).children().children(".removeJudge").click(() => {
+	$(`#round${roundNumber}`).find(".removeJudge").click(() => {
 		removeJudgeColumn();
 	});
+	$(`#round${roundNumber}`).find(".rankHeader").click(() => {
+		removeJudgeColumn();
+	});
+	$()
 	attachSavePairingsHandler();
 	function attachSavePairingsHandler() {
 		$(`#round${roundNumber}`).children().children(".savePairings").click(() => {
@@ -293,15 +297,16 @@ function buildAssignmentTable(roundNumber) {
 		});
 	}
 	$(`#round${roundNumber}`).children().children(".editPairings").click(() => {
-		$(`#round${roundNumber}`).children().children(".editPairings").html("Save Pairings");
-		$(`#round${roundNumber}`).children().children(".editPairings").attr("class", "savePairings");
-		$(`#round${roundNumber}`).children().children(".addPairing").prop("disabled", false);
-		$(`#round${roundNumber}`).children().children(".removePairing").prop("disabled", false);
+		$(`#round${roundNumber}`).find(".editPairings").html("Save Pairings");
+		$(`#round${roundNumber}`).find(".editPairings").attr("class", "savePairings");
+		$(`#round${roundNumber}`).find(".addPairing").prop("disabled", false);
+		$(`#round${roundNumber}`).find(".removePairing").prop("disabled", false);
 		let rows = $(`#round${roundNumber}`).children("table").children().children("tr");
 		for (let a = 1; a < rows.length; a++) {
-			$(rows[a]).children().children(".room").prop("disabled", false);
-			$(rows[a]).children().children(".plaintiff").prop("disabled", false);
-			$(rows[a]).children().children(".defense").prop("disabled", false);
+			$(rows[a]).find(".rank").prop("disabled", false);
+			$(rows[a]).find(".room").prop("disabled", false);
+			$(rows[a]).find(".plaintiff").prop("disabled", false);
+			$(rows[a]).find(".defense").prop("disabled", false);
 		}
 		attachSavePairingsHandler();
 	});
