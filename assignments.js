@@ -201,6 +201,7 @@ function buildAssignmentTable(roundNumber) {
 	});
 	function buildPairingRow(pairing) {
 		let rowHTML = `<tr pairing='${pairing.id}'>`;
+		rowHTML += `<td><input class='rank' size='2' maxLength='2' value='${pairing.rank}' disabled="disabled"></td>`;//rank
 		rowHTML += `<td><input class='room' value='${pairing.room}' disabled="disabled"></td>`;//room
 		rowHTML += `<td><input class='plaintiff' maxlength='4' size='4' value='${pairing.plaintiff}' disabled="disabled"></td>`;//π
 		rowHTML += `<td><input class='defense' maxlength='4' size='4' value='${pairing.defense}' disabled="disabled"></td>`;//∆
@@ -379,7 +380,15 @@ function buildAssignmentTable(roundNumber) {
 
 	function addPairingRow() {
 		let rowHTML = "<tr>";
-		rowHTML += "<td><input class='room'></td>"
+		rowHTML += "<td><input class='rank' maxlength='2' size='2'></td>"
+		//if this is first round just create blank rooms
+		if (roundNumber == 1) {
+			rowHTML += "<td><input class='room'></td>"
+		} else {//but if it is a later round, copy the room names from the prior round
+			let currentRoomCount = ($(`#round${roundNumber}`).find(".room")).length;
+			let nextRoomName = $(`#round${roundNumber - 1}`).find(".room")[currentRoomCount].value;
+			rowHTML += `<td><input class='room' value='${nextRoomName}'></td>`;
+		}
 		rowHTML += "<td><input class='plaintiff' maxlength='4' size='4'></td>";
 		rowHTML += "<td><input class='defense' maxlength='4' size='4'></td>";
 		getAllJudges().then((judges) => {
