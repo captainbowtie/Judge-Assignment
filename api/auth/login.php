@@ -23,13 +23,13 @@ if (
 	$password = $_POST["password"];
 	$hash = hash("sha512", $password);
 	//Hash for admin password ()
-	if ($hash == "cc4f766d0dede9be858b0f8808b89b88b5321e0f6fa5d579ce1c05ade1e8aa363c9a4fedaed990d9127931b27da27ad982a2720e192b247491c2779cdbd8f058") {
+	if ($hash == "c7ad44cbad762a5da0a452f9e854fdc1e0e7a52a38015f23f3eab1d80b931dd472634dfac71cd34ebc35d16ab7fb8a90c81f975113d6c7538dc69dd8de9077ec") {
 		session_start();
 		$_SESSION["isAdmin"] = true;
 		$_SESSION["isUser"] = false;
 		echo json_encode(array("message" => 0));
 		//hash for judge checkin password ()
-	} elseif ($hash == "7fd8937d2571ecb46ab31617fb8a468557fbe2a90bd9b7a32545fef745a74a4937e5f7666abf59a2b4bcad8ad7412e828139a4a04ee610c524773ce72fa26d45") {
+	} elseif ($hash == "b14361404c078ffd549c03db443c3fede2f3e534d73f78f77301ed97d4a436a9fd9db05ee8b325c0ad36438b43fec8510c204fc1c1edb21d0941c00e9e2c1ce2") {
 		session_start();
 		$_SESSION["isUser"] = true;
 		$_SESSION["isAdmin"] = false;

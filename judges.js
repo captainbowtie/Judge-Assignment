@@ -73,6 +73,26 @@ function createJudgeRow(judge) {
 	}
 	rowHTML += "</select>";
 	rowHTML += "</td><td>";
+	rowHTML += "<select class='preside'>";
+	switch (judge.preside) {
+		case 0:
+			rowHTML += "<option value='0' selected='selected'>No preference</option>";
+			rowHTML += "<option value='1'>Preside</option>";
+			rowHTML += "<option value='2'>Score</option>";
+			break;
+		case 1:
+			rowHTML += "<option value='0'>No preference</option>";
+			rowHTML += "<option value='1' selected='selected'>Preside</option>";
+			rowHTML += "<option value='2'>Score</option>";
+			break;
+		case 2:
+			rowHTML += "<option value='0'>No preference</option>";
+			rowHTML += "<option value='1'>Preside</option>";
+			rowHTML += "<option value='2' selected='selected'>Score</option>";
+			break;
+	}
+	rowHTML += "</select>";
+	rowHTML += "</td><td>";
 	rowHTML += "<button class='conflicts'>Conflicts</button>";
 	rowHTML += "</td><td>";
 	rowHTML += "<button class='deleteJudge'>Delete</button>";
@@ -99,7 +119,7 @@ function createConflictRow(conflict) {
 }
 
 function fillTable(judges) {
-	let tableHTML = "<tr><th>Name</th><th>Category</th><th>Conflicts</th><th>Delete</th><th>Notes</th><th>Check In</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th></tr>";
+	let tableHTML = "<tr><th>Name</th><th>Category</th><th>Preside</th><th>Conflicts</th><th>Delete</th><th>Notes</th><th>Check In</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th></tr>";
 	function appendHTML(judge) {
 		tableHTML += createJudgeRow(judge);
 	}
@@ -117,6 +137,12 @@ function fillTable(judges) {
 		let id = $(this).parent().parent().attr("id");
 		let category = $(this).val();
 		updateCategory(id, category);
+	});
+
+	$(".preside").on("change", function () {
+		let id = $(this).parent().parent().attr("id");
+		let preside = $(this).val();
+		updatePreside(id, preside);
 	});
 
 	$(".checkIn").on("change", function () {
@@ -242,9 +268,7 @@ function notesModal(id, name) {
 
 $("#addJudge").click(function () {
 	let name = $("#newJudgeName").val();
-	let category = $("#newJudgeCategory").val();
-	if (category == 0) { category = 1 };
-	createJudge(name, category);
+	createJudge(name);
 });
 
 function updateName(id, name) {
@@ -261,6 +285,17 @@ function updateName(id, name) {
 function updateCategory(id, category) {
 	$.post("api/judges/updateCategory.php",
 		{ "id": id, "category": category },
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
+		},
+		"json");
+}
+
+function updatePreside(id, preside) {
+	$.post("api/judges/updatePreside.php",
+		{ "id": id, "preside": preside },
 		function (response) {
 			if (response.message == -1) {
 				handleSessionExpiration();
@@ -324,9 +359,9 @@ function createConflict(judgeId, teamNumber) {
 		"json");
 }
 
-function createJudge(name, category) {
+function createJudge(name) {
 	$.post("api/judges/create.php",
-		{ "name": name, "category": category },
+		{ "name": name },
 		function (response) {
 			if (response.message == -1) {
 				handleSessionExpiration();

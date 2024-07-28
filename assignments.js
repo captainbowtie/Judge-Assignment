@@ -189,7 +189,7 @@ function buildAssignmentTable(roundNumber) {
 
 	//table headers
 	let tableHTML = "<table>";
-	tableHTML += "<tr><th>Room</th><th>π</th><th>∆</th>";
+	tableHTML += "<tr><th id='rankHeader'>Rank</th><th>Room</th><th>π</th><th>∆</th>";
 	for (let a = 0; a < maxJudgesPerPairing; a++) {
 		tableHTML += `<th>Judge ${a + 1}</th>`
 	}

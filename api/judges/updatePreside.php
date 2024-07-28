@@ -22,11 +22,13 @@ require_once SITE_ROOT . "/database.php";
 session_start();
 if ($_SESSION["isAdmin"] || $_SESSION["isUser"]) {
 	if (
-		isset($_POST["name"])
+		isset($_POST["id"]) &&
+		isset($_POST["preside"])
 	) {
-		$name = htmlspecialchars(strip_tags($_POST["name"]));
+		$id = htmlspecialchars(strip_tags($_POST["id"]));
+		$preside = htmlspecialchars(strip_tags($_POST["preside"]));
 
-		if (createJudge($name)) {
+		if (updateJudge($id, $preside)) {
 			// set response code - 201 created
 			http_response_code(201);
 
@@ -38,7 +40,7 @@ if ($_SESSION["isAdmin"] || $_SESSION["isUser"]) {
 			http_response_code(503);
 
 			// tell the user
-			echo json_encode(array("message" => "Unable to create judge."));
+			echo json_encode(array("message" => "Unable to update judge."));
 		}
 	} else {
 
@@ -46,23 +48,23 @@ if ($_SESSION["isAdmin"] || $_SESSION["isUser"]) {
 		http_response_code(400);
 
 		// tell the user
-		echo json_encode(array("message" => "Unable to create judge. Data is incomplete."));
+		echo json_encode(array("message" => "Unable to update judge. Data is incomplete."));
 	}
 } else {
 	$_SESSION["isAdmin"] = false;
 	echo json_encode(array("message" => -1));
 }
-
-function createJudge($name)
+function updateJudge($id, $preside)
 {
 
-	$judgeCreated = false;
+	$judgeUpdated = false;
 	$db = new Database();
 	$conn = $db->getConnection();
-	$stmt = $conn->prepare("INSERT INTO judges (name) VALUES (:name)");
-	$stmt->bindParam(':name', $name);
+	$stmt = $conn->prepare("UPDATE judges SET preside=:preside WHERE id=:id");
+	$stmt->bindParam(':preside', $preside);
+	$stmt->bindParam(':id', $id);
 	$stmt->execute();
 	$conn = null;
-	$judgeCreated = true;
-	return $judgeCreated;
+	$judgeUpdated = true;
+	return $judgeUpdated;
 }
