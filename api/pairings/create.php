@@ -29,10 +29,11 @@ if ($_SESSION["isAdmin"]) {
 		$round = htmlspecialchars(strip_tags($_POST["round"]));
 		$pairings = array();
 		foreach ($_POST["pairings"] as &$pairing) {
+			$rank = htmlspecialchars(strip_tags($pairing["rank"]));
 			$room = htmlspecialchars(strip_tags($pairing["room"]));
 			$plaintiff = htmlspecialchars(strip_tags($pairing["plaintiff"]));
 			$defense = htmlspecialchars(strip_tags($pairing["defense"]));
-			array_push($pairings, array("room" => $room, "plaintiff" => $plaintiff, "defense" => $defense));
+			array_push($pairings, array("rank" => $rank, "room" => $room, "plaintiff" => $plaintiff, "defense" => $defense));
 		}
 
 
@@ -83,9 +84,11 @@ function createPairings($round, $pairings)
 	$deletePairingsStmt = $conn->prepare("DELETE FROM pairings WHERE round=:round");
 	$deletePairingsStmt->bindParam(':round', $round);
 	$deletePairingsStmt->execute();
-	$createStmt = $conn->prepare("INSERT INTO pairings (round, room, plaintiff, defense) VALUES (:round, :room, :plaintiff, :defense)");
+	//create the new pairings
+	$createStmt = $conn->prepare("INSERT INTO pairings (round, rank, room, plaintiff, defense) VALUES (:round, :rank, :room, :plaintiff, :defense)");
 	$createStmt->bindParam(':round', $round);
 	foreach ($pairings as &$pairing) {
+		$createStmt->bindParam(':rank', $pairing["rank"]);
 		$createStmt->bindParam(':room', $pairing["room"]);
 		$createStmt->bindParam(':plaintiff', $pairing["plaintiff"]);
 		$createStmt->bindParam(':defense', $pairing["defense"]);

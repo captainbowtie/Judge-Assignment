@@ -115,15 +115,17 @@ function updateJudges() {
 		//create HTML with black line between available and unavailable judges
 		let tableHTML = "<table>";
 		roundJudges.forEach((judge) => {
+			let preside = (judge.preside == 0) ? "No preference" : ((judge.preside == 1) ? "Preside" : "Score");
 			tableHTML += "<tr>";
-			tableHTML += `<td title='${judge.notes}'>${judge.name}</td>`;
+			tableHTML += `<td title='${judge.category + "\n" + preside + "\n" + judge.notes}'>${judge.name}</td>`;
 			tableHTML += `<td><input type='checkbox' class='checkIn' judge='${judge.id}' ${(judge.checkedIn == 1) ? 'checked' : ''}></td>`;
 			tableHTML += "</tr>";
 		});
 		tableHTML += "<tr><td><hr></td><td></td></tr>";
 		nonroundJudges.forEach((judge) => {
+			let preside = (judge.preside == 0) ? "No preference" : ((judge.preside == 1) ? "Preside" : "Score");
 			tableHTML += "<tr>";
-			tableHTML += `<td title='${judge.notes}'>${judge.name}</td>`;
+			tableHTML += `<td title='${judge.category + "\n" + preside + "\n" + judge.notes}'>${judge.name}</td>`;
 			tableHTML += `<td><input type='checkbox' class='checkIn' judge='${judge.id}' ${(judge.checkedIn == 1) ? 'checked' : ''}></td>`;
 			tableHTML += "</tr>";
 		});
@@ -271,7 +273,12 @@ function buildAssignmentTable(roundNumber) {
 		removeJudgeColumn();
 	});
 	$(`#round${roundNumber}`).find(".rankHeader").click(() => {
-		removeJudgeColumn();
+		let currentVisibility = $($(`#round${roundNumber}`).find(".rank")[0]).css("visibility");
+		if (currentVisibility == "visible") {
+			$(`#round${roundNumber}`).find(".rank").css("visibility", "hidden");
+		} else {
+			$(`#round${roundNumber}`).find(".rank").css("visibility", "visible");
+		}
 	});
 	$()
 	attachSavePairingsHandler();
@@ -296,7 +303,7 @@ function buildAssignmentTable(roundNumber) {
 			} else { savePairings(); }
 		});
 	}
-	$(`#round${roundNumber}`).children().children(".editPairings").click(() => {
+	$(`#round${roundNumber}`).find(".editPairings").click(() => {
 		$(`#round${roundNumber}`).find(".editPairings").html("Save Pairings");
 		$(`#round${roundNumber}`).find(".editPairings").attr("class", "savePairings");
 		$(`#round${roundNumber}`).find(".addPairing").prop("disabled", false);
@@ -455,10 +462,12 @@ function buildAssignmentTable(roundNumber) {
 		let rows = $(`#round${roundNumber}`).children("table").children().children("tr");
 		//start at 1 because [0] is the header row
 		for (let a = 1; a < rows.length; a++) {
-			let room = $(rows[a]).children().children(".room").val();
-			let plaintiff = $(rows[a]).children().children(".plaintiff").val();
-			let defense = $(rows[a]).children().children(".defense").val();
+			let rank = $(rows[a]).find(".rank").val();
+			let room = $(rows[a]).find(".room").val();
+			let plaintiff = $(rows[a]).find(".plaintiff").val();
+			let defense = $(rows[a]).find(".defense").val();
 			let pairing = {
+				"rank": rank,
 				"room": room,
 				"plaintiff": plaintiff,
 				"defense": defense
@@ -492,27 +501,40 @@ function buildAssignmentTable(roundNumber) {
 			"json");
 	}
 	function generateAssignments() {
-		getAllJudges().then((judges) => {
-			//filter judges round availabiity
-			let filteredJudges = filterJudges(judges);
-			//get selects
-			$(`#round${roundNumber}`).children().children().children().children().children(".judgeSelect").val(0);
-			let selects = $(`#round${roundNumber}`).children().children().children().children().children(".judgeSelect");
-			//shuffle the selects
-			let shuffledSelects = shuffle(selects);
-			//shuffle the judges
-			let shuffledJudges = shuffle(filteredJudges);
-			//fill selects until they're all full or we run out of judges
-			for (let a = 0; a < shuffledSelects.length; a++) {
-				if (a < shuffledJudges.length) {
-					$(shuffledSelects[a]).val(shuffledJudges[a].id);
+		let maxAttempts = 10000;
+		let attemptCounter = 0;
+		attemptAssignments();
+
+		function attemptAssignments() {
+			attemptCounter++;
+			getAllJudges().then((judges) => {
+				//filter judges round availabiity
+				let filteredJudges = filterJudges(judges);
+				//get selects
+				$(`#round${roundNumber}`).find(".judgeSelect").val(0);
+				let selects = $(`#round${roundNumber}`).find(".judgeSelect");
+				//shuffle the selects
+				let shuffledSelects = shuffle(selects);
+				//shuffle the judges
+				let shuffledJudges = shuffle(filteredJudges);
+				//fill selects until they're all full or we run out of judges
+				for (let a = 0; a < shuffledSelects.length; a++) {
+					if (a < shuffledJudges.length) {
+						$(shuffledSelects[a]).val(shuffledJudges[a].id);
+					}
 				}
-			}
-			screenAssignments();
-			//screen the assignments for conflicts
-			//if there are conflicts, try again
-			//if there aren't conflicts, display the assignments
-		});
+				screenAssignments().then((assignmentsValid) => {
+					if (!assignmentsValid && attemptCounter < maxAttempts) {
+						attemptAssignments();
+					} else if (!assignmentsValid) {
+						alert(`"Unable to find permissible judge assignments after ${maxAttempts} attempts. Please click the button again to continue trying, or assign judges manually."`);
+					}
+				});
+				//screen the assignments for conflicts
+				//if there are conflicts, try again
+				//if there aren't conflicts, display the assignments
+			});
+		}
 
 		function filterJudges(judges) {
 			let filteredJudges = [];
