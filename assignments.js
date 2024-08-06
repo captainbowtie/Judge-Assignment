@@ -350,7 +350,7 @@ function buildAssignmentTable(roundNumber) {
 			} else { saveAssignments(); }
 		});
 	};
-	$(`#round${roundNumber}`).children().children(".generateAssignments").click(() => {
+	$(`#round${roundNumber}`).find(".generateAssignments").click(() => {
 		generateAssignments();
 	});
 
@@ -432,12 +432,13 @@ function buildAssignmentTable(roundNumber) {
 		$(rows[0]).append(`<th>Judge ${maxJudgesPerPairing}</th>`);
 		getAllJudges().then((judges) => {
 			//first we just fill all the selects with all the names	
-			let selectHTML = "<td><select class='judgeSelect'><option selected value='0'>---</option>";
-			judges.forEach((judge) => {
-				selectHTML += `<option value ='${judge.id}'>${judge.name}</option>`
-			});
-			selectHTML += "</select></td>";
 			for (let a = 1; a < rows.length; a++) {
+				let pairing = $(rows[a]).attr("pairing");
+				let selectHTML = `<td><select class='judgeSelect' pairing='${pairing}'><option selected value='0'>---</option>`;
+				judges.forEach((judge) => {
+					selectHTML += `<option value ='${judge.id}'>${judge.name}</option>`
+				});
+				selectHTML += "</select></td>";
 				$(rows[a]).append(selectHTML);
 			}
 		});
@@ -500,7 +501,106 @@ function buildAssignmentTable(roundNumber) {
 			() => { updateAssignments().then(() => { buildAssignmentTable(roundNumber); }); },
 			"json");
 	}
+
+	//this function duplicates much of the other screening code, but doesn't manipulate the DOM until the end
 	function generateAssignments() {
+		Promise.all([getAllJudges(), getAllConflicts(), updatePairings(), updateAssignments()]).then((data) => {
+			let judges = data[0];
+			let conflicts = data[1];
+
+			//pull together two lists: available judges and assignment slots to be filled
+			let filteredJudges = filterJudges(judges);
+			let selects = $(`#round${roundNumber}`).find(".judgeSelect");
+			let assignments = [];
+			for (let a = 0; a < selects.length; a++) {
+				let assignment = {
+					pairing: $(selects[a]).attr("pairing"),
+					judge: 0
+				};
+				assignments.push(assignment);
+			}
+
+			//create initial proposal, which will either be used if acceptable or compared to future proposals
+			let assignmentProposal0 = proposeAssignments(assignments, filteredJudges);
+			let impermissibleJudges = 0;
+			let presidePreferencesIgnored = 0;
+			let maxAttempts = 10000;
+			let attemptCounter = 0;
+			do {
+				let assignmentProposal1 = proposeAssignments(assignments, filteredJudges);
+				//TODO: function counting impermissible judge assignments
+				let proposal0Impermissibles = countAffiliationConflicts(assignmentProposal0) + countPastRoundConflicts(assignmentProposal0);
+				let proposal1Impermissibles = countAffiliationConflicts(assignmentProposal1) + countPastRoundConflicts(assignmentProposal1);
+				function countAffiliationConflicts(proposedAssignments) {
+					let conflictCount = 0;
+					return conflictCount;
+				};
+				function countPastRoundConflicts(proposedAssignments) {
+					let conflictCount = 0;
+					//
+					return conflictCount;
+				};
+				if (proposal0Impermissibles > proposal1Impermissibles) {
+					assignmentProposal0 = assignmentProposal1;
+				}
+				//TODO: function comparing AMTA judge category rules
+				//TODO: function checking for presiders/scorers who will be unhappy
+				let proposal0UnhappyJudges = 0;
+				let proposal1UnhappyJudges = 0;
+				if (proposal0UnhappyJudges > proposal1UnhappyJudges) {
+					assignmentProposal0 = assignmentProposal1;
+				}
+				attemptCounter++
+			} while (attemptCounter < maxAttempts && impermissibleJudges > 0 && presidePreferencesIgnored > 0);
+
+			//TODO: screen assignments, looping until all permissible, presiding, et cetera
+			//put the assignments into the DOM, going pairing by pairing
+			while (assignmentProposal0.length > 0) {
+				let pairingId = assignmentProposal0[0].pairing;
+				let judgeIds = [];
+				for (let a = 0; a < assignmentProposal0.length; a++) {
+					if (assignmentProposal0[a].pairing == pairingId) {
+						judgeIds.push(assignmentProposal0[a].judge);
+						assignmentProposal0.splice(a, 1);
+						a--;
+					}
+				}
+				for (let a = 0; a < selects.length; a++) {
+					if ($(selects[a]).attr("pairing") == pairingId) {
+						$(selects[a]).val(judgeIds[0]);
+						judgeIds.splice(0, 1);
+					}
+				}
+			}
+			screenAssignments();
+
+
+			//function to randomly assign judges to assignment slots
+			function proposeAssignments(assignments, judges) {
+				let shuffledAssignments = shuffle(structuredClone(assignments));
+				let shuffledJudges = shuffle(structuredClone(judges));
+				//fill assignments until they're all full or we run out of judges
+				for (let a = 0; a < shuffledAssignments.length; a++) {
+					if (a < shuffledJudges.length) {
+						shuffledAssignments[a].judge = shuffledJudges[a].id;
+					}
+				}
+				return shuffledAssignments;
+			}
+
+			function filterJudges(judges) {
+				let filteredJudges = [];
+				judges.forEach((judge) => {
+					if (judge[`round${roundNumber}`] == true || judge["checkedIn"] == true) {
+						filteredJudges.push(judge);
+					}
+				});
+				return filteredJudges;
+			}
+		});
+
+		/*
+
 		let maxAttempts = 10000;
 		let attemptCounter = 0;
 		attemptAssignments();
@@ -535,16 +635,7 @@ function buildAssignmentTable(roundNumber) {
 				//if there aren't conflicts, display the assignments
 			});
 		}
-
-		function filterJudges(judges) {
-			let filteredJudges = [];
-			judges.forEach((judge) => {
-				if (judge[`round${roundNumber}`] == true || judge["checkedIn"] == true) {
-					filteredJudges.push(judge);
-				}
-			});
-			return filteredJudges;
-		}
+	*/
 	}
 }
 
