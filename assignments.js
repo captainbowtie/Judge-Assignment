@@ -511,50 +511,94 @@ function buildAssignmentTable(roundNumber) {
 			//pull together two lists: available judges and assignment slots to be filled
 			let filteredJudges = filterJudges(judges);
 			let selects = $(`#round${roundNumber}`).find(".judgeSelect");
-			let assignments = [];
+			let assignmentSlots = [];
 			for (let a = 0; a < selects.length; a++) {
 				let assignment = {
 					pairing: $(selects[a]).attr("pairing"),
-					judge: 0
+					judge: 0,
+					plaintiff: 0,
+					defense: 0
 				};
-				assignments.push(assignment);
+				for (let b = 0; b < pairings.length; b++) {
+					if (pairings[b].id == assignment.pairing) {
+						assignment.plaintiff = pairings[b].plaintiff;
+						assignment.defense = pairings[b].defense;
+					}
+				}
+				assignmentSlots.push(assignment);
 			}
 
 			//create initial proposal, which will either be used if acceptable or compared to future proposals
-			let assignmentProposal0 = proposeAssignments(assignments, filteredJudges);
+			let assignmentProposal0 = proposeAssignments(assignmentSlots, filteredJudges);
 			let impermissibleJudges = 0;
 			let presidePreferencesIgnored = 0;
-			let maxAttempts = 10000;
+			let maxAttempts = 100;
 			let attemptCounter = 0;
 			do {
-				let assignmentProposal1 = proposeAssignments(assignments, filteredJudges);
-				//TODO: function counting impermissible judge assignments
+				let assignmentProposal1 = proposeAssignments(assignmentSlots, filteredJudges);
 				let proposal0Impermissibles = countAffiliationConflicts(assignmentProposal0) + countPastRoundConflicts(assignmentProposal0);
+				impermissibleJudges = proposal0Impermissibles;
 				let proposal1Impermissibles = countAffiliationConflicts(assignmentProposal1) + countPastRoundConflicts(assignmentProposal1);
 				function countAffiliationConflicts(proposedAssignments) {
 					let conflictCount = 0;
+					for (let a = 0; a < proposedAssignments.length; a++) {
+						for (let b = 0; b < conflicts.length; b++) {
+							if (conflicts[b].judge == proposedAssignments[a].judge && (proposedAssignments[a].plaintiff == conflicts[b].team || proposedAssignments[a].defense == conflicts[b].team)) {
+								conflictCount++;
+							}
+						}
+					}
 					return conflictCount;
 				};
 				function countPastRoundConflicts(proposedAssignments) {
 					let conflictCount = 0;
-					//
+					for (let a = 0; a < proposedAssignments.length; a++) {
+						assignments.forEach((assignment) => {
+							pairings.forEach((pairing) => {
+								if (pairing.round != roundNumber && assignment.judge != 0) {//stop if the pairing to be compared is the current round or if the assignment has no judge
+									if (proposedAssignments[a].judge == assignment.judge) {
+										if (assignment.pairing == pairing.id) {
+											if (proposedAssignments[a].plaintiff == pairing.plaintiff ||
+												proposedAssignments[a].plaintiff == pairing.defense ||
+												proposedAssignments[a].defense == pairing.plaintiff ||
+												proposedAssignments[a].defense == pairing.defense) {
+												conflictCount++;
+											}
+										}
+
+									}
+								}
+							});
+						});
+					}
 					return conflictCount;
 				};
 				if (proposal0Impermissibles > proposal1Impermissibles) {
 					assignmentProposal0 = assignmentProposal1;
+					impermissibleJudges = proposal1Impermissibles;
+
+				} else if (proposal0Impermissibles == proposal1Impermissibles) {
+					//TODO: function comparing AMTA judge category rules
+
+					//TODO: function checking for presiders/scorers who will be unhappy
+					let proposal0UnhappyJudges = 0;
+					let proposal1UnhappyJudges = 0;
+					if (proposal0UnhappyJudges > proposal1UnhappyJudges) {
+						assignmentProposal0 = assignmentProposal1;
+					}
 				}
-				//TODO: function comparing AMTA judge category rules
-				//TODO: function checking for presiders/scorers who will be unhappy
-				let proposal0UnhappyJudges = 0;
-				let proposal1UnhappyJudges = 0;
-				if (proposal0UnhappyJudges > proposal1UnhappyJudges) {
-					assignmentProposal0 = assignmentProposal1;
-				}
+
+
 				attemptCounter++
-			} while (attemptCounter < maxAttempts && impermissibleJudges > 0 && presidePreferencesIgnored > 0);
+			} while (attemptCounter < maxAttempts && (impermissibleJudges > 0 || presidePreferencesIgnored > 0));
+
+			if (attemptCounter >= maxAttempts) {
+				alert(`Unable to find permissible assignments after ${maxAttempts} attempts. Please assign judges manually, or click the button to continue attempting assignments.`);
+			}
 
 			//TODO: screen assignments, looping until all permissible, presiding, et cetera
 			//put the assignments into the DOM, going pairing by pairing
+			updateJudgeSelects();
 			while (assignmentProposal0.length > 0) {
 				let pairingId = assignmentProposal0[0].pairing;
 				let judgeIds = [];
@@ -598,44 +642,6 @@ function buildAssignmentTable(roundNumber) {
 				return filteredJudges;
 			}
 		});
-
-		/*
-
-		let maxAttempts = 10000;
-		let attemptCounter = 0;
-		attemptAssignments();
-
-		function attemptAssignments() {
-			attemptCounter++;
-			getAllJudges().then((judges) => {
-				//filter judges round availabiity
-				let filteredJudges = filterJudges(judges);
-				//get selects
-				$(`#round${roundNumber}`).find(".judgeSelect").val(0);
-				let selects = $(`#round${roundNumber}`).find(".judgeSelect");
-				//shuffle the selects
-				let shuffledSelects = shuffle(selects);
-				//shuffle the judges
-				let shuffledJudges = shuffle(filteredJudges);
-				//fill selects until they're all full or we run out of judges
-				for (let a = 0; a < shuffledSelects.length; a++) {
-					if (a < shuffledJudges.length) {
-						$(shuffledSelects[a]).val(shuffledJudges[a].id);
-					}
-				}
-				screenAssignments().then((assignmentsValid) => {
-					if (!assignmentsValid && attemptCounter < maxAttempts) {
-						attemptAssignments();
-					} else if (!assignmentsValid) {
-						alert(`"Unable to find permissible judge assignments after ${maxAttempts} attempts. Please click the button again to continue trying, or assign judges manually."`);
-					}
-				});
-				//screen the assignments for conflicts
-				//if there are conflicts, try again
-				//if there aren't conflicts, display the assignments
-			});
-		}
-	*/
 	}
 }
 
