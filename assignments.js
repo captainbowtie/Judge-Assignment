@@ -535,6 +535,8 @@ function buildAssignmentTable(roundNumber) {
 			let attemptCounter = 0;
 			do {
 				let assignmentProposal1 = proposeAssignments(assignmentSlots, filteredJudges);
+
+				//impermissible judge assignment check
 				let proposal0Impermissibles = countAffiliationConflicts(assignmentProposal0) + countPastRoundConflicts(assignmentProposal0);
 				impermissibleJudgeCount = proposal0Impermissibles;
 				let proposal1Impermissibles = countAffiliationConflicts(assignmentProposal1) + countPastRoundConflicts(assignmentProposal1);
@@ -576,7 +578,8 @@ function buildAssignmentTable(roundNumber) {
 					assignmentProposal0 = assignmentProposal1;
 					impermissibleJudgeCount = proposal1Impermissibles;
 				}
-				//TODO: function comparing AMTA judge category rules
+
+				//judge preside/score preference check
 				if (proposal0Impermissibles == 0 && proposal1Impermissibles == 0) {
 					let proposal0ExcessPresiders = countExcessPresiders(assignmentProposal0);
 					let proposal1ExcessPresiders = countExcessPresiders(assignmentProposal1);
@@ -624,7 +627,6 @@ function buildAssignmentTable(roundNumber) {
 				alert(`Unable to find permissible assignments after ${maxAttempts} attempts. Please assign judges manually, or click the button to continue attempting assignments.`);
 			}
 
-			//TODO: screen assignments, looping until all permissible, presiding, et cetera
 			//put the assignments into the DOM, going pairing by pairing
 			updateJudgeSelects();
 			while (assignmentProposal0.length > 0) {
@@ -671,6 +673,14 @@ function buildAssignmentTable(roundNumber) {
 			}
 		});
 	}
+	let currentRound = 1;
+	pairings.forEach(pairing => {
+		if (pairing.round > currentRound) {
+			currentRound = pairing.round;
+		}
+	});
+	$("#assignments").tabs({ active: (currentRound - 1) });
+
 }
 
 function updateJudgeSelects() {
