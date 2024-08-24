@@ -502,7 +502,6 @@ function buildAssignmentTable(roundNumber) {
 			"json");
 	}
 
-	//this function duplicates much of the other screening code, but doesn't manipulate the DOM until the end
 	function generateAssignments() {
 		Promise.all([getAllJudges(), getAllConflicts(), updatePairings(), updateAssignments()]).then((data) => {
 			let judges = data[0];
@@ -530,9 +529,9 @@ function buildAssignmentTable(roundNumber) {
 
 			//create initial proposal, which will either be used if acceptable or compared to future proposals
 			let assignmentProposal0 = proposeAssignments(assignmentSlots, filteredJudges);
-			let impermissibleJudgeCount = 0;
-			let presidePreferencesIgnored = 0;
-			let maxAttempts = 100;
+			let impermissibleJudgeCount = 1;
+			let presidePreferencesIgnored = 1;
+			let maxAttempts = 1000;
 			let attemptCounter = 0;
 			do {
 				let assignmentProposal1 = proposeAssignments(assignmentSlots, filteredJudges);
@@ -576,10 +575,9 @@ function buildAssignmentTable(roundNumber) {
 				if (proposal0Impermissibles > proposal1Impermissibles) {
 					assignmentProposal0 = assignmentProposal1;
 					impermissibleJudgeCount = proposal1Impermissibles;
-
-				} else if (proposal0Impermissibles == proposal1Impermissibles) {
-					//TODO: function comparing AMTA judge category rules
-
+				}
+				//TODO: function comparing AMTA judge category rules
+				if (proposal0Impermissibles == 0 && proposal1Impermissibles == 0) {
 					let proposal0ExcessPresiders = countExcessPresiders(assignmentProposal0);
 					let proposal1ExcessPresiders = countExcessPresiders(assignmentProposal1);
 					presidePreferencesIgnored = proposal0ExcessPresiders;
