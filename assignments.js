@@ -530,14 +530,14 @@ function buildAssignmentTable(roundNumber) {
 
 			//create initial proposal, which will either be used if acceptable or compared to future proposals
 			let assignmentProposal0 = proposeAssignments(assignmentSlots, filteredJudges);
-			let impermissibleJudges = 0;
+			let impermissibleJudgeCount = 0;
 			let presidePreferencesIgnored = 0;
 			let maxAttempts = 100;
 			let attemptCounter = 0;
 			do {
 				let assignmentProposal1 = proposeAssignments(assignmentSlots, filteredJudges);
 				let proposal0Impermissibles = countAffiliationConflicts(assignmentProposal0) + countPastRoundConflicts(assignmentProposal0);
-				impermissibleJudges = proposal0Impermissibles;
+				impermissibleJudgeCount = proposal0Impermissibles;
 				let proposal1Impermissibles = countAffiliationConflicts(assignmentProposal1) + countPastRoundConflicts(assignmentProposal1);
 				function countAffiliationConflicts(proposedAssignments) {
 					let conflictCount = 0;
@@ -575,22 +575,52 @@ function buildAssignmentTable(roundNumber) {
 				};
 				if (proposal0Impermissibles > proposal1Impermissibles) {
 					assignmentProposal0 = assignmentProposal1;
-					impermissibleJudges = proposal1Impermissibles;
+					impermissibleJudgeCount = proposal1Impermissibles;
 
 				} else if (proposal0Impermissibles == proposal1Impermissibles) {
 					//TODO: function comparing AMTA judge category rules
 
-					//TODO: function checking for presiders/scorers who will be unhappy
-					let proposal0UnhappyJudges = 0;
-					let proposal1UnhappyJudges = 0;
-					if (proposal0UnhappyJudges > proposal1UnhappyJudges) {
+					let proposal0ExcessPresiders = countExcessPresiders(assignmentProposal0);
+					let proposal1ExcessPresiders = countExcessPresiders(assignmentProposal1);
+					presidePreferencesIgnored = proposal0ExcessPresiders;
+					function countExcessPresiders(proposedAssignments) {
+						//initialize array counting how may presiding judges each pairing has
+						let pairingPresiderCounts = [];
+						proposedAssignments.forEach((assignment) => {
+							pairingPresiderCounts[assignment.pairing] = 0;
+						});
+						//count how many presiders each pairing has
+						proposedAssignments.forEach((assignment) => {
+							judges.forEach((judge) => {
+								if (assignment.judge == judge.id) {
+									if (judge.preside == 1) {
+										pairingPresiderCounts[assignment.pairing]++;
+									}
+								}
+							});
+						});
+						//count how many rounds have too many or not enough presiders
+						let excessPresiders = 0;
+						let neededPresiders = 0;
+						pairingPresiderCounts.forEach((pairingJudgeCount) => {
+							if (pairingJudgeCount > 1) {
+								excessPresiders++;
+							} else if (pairingJudgeCount < 1) {
+								neededPresiders++;
+							}
+						})
+						//return the product of the two counts
+						return excessPresiders * neededPresiders;
+					}
+					if (proposal0ExcessPresiders > proposal1ExcessPresiders) {
 						assignmentProposal0 = assignmentProposal1;
+						presidePreferencesIgnored = proposal1ExcessPresiders;
 					}
 				}
 
 
 				attemptCounter++
-			} while (attemptCounter < maxAttempts && (impermissibleJudges > 0 || presidePreferencesIgnored > 0));
+			} while (attemptCounter < maxAttempts && (impermissibleJudgeCount > 0 || presidePreferencesIgnored > 0));
 
 			if (attemptCounter >= maxAttempts) {
 				alert(`Unable to find permissible assignments after ${maxAttempts} attempts. Please assign judges manually, or click the button to continue attempting assignments.`);
