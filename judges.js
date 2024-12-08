@@ -19,6 +19,18 @@ $(document).ready(function () {
 	setInterval(function () { getJudges().then((judges) => fillTable(judges)); }, 10000);
 });
 
+$("#resetCheckin").on("click",function(){
+	resetCheckins();
+});
+
+function resetCheckins(){
+	let checkBoxes = $(".checkIn");
+	for(let a = 0;a<checkBoxes.length;a++){
+		$(checkBoxes[a]).prop("checked",false);
+	}
+	checkOutAll();
+}
+
 function getJudges() {
 	return new Promise((resolve, reject) => {
 		$.get("api/judges/getAll.php",
@@ -318,6 +330,16 @@ function checkIn(id) {
 function checkOut(id) {
 	$.post("api/judges/checkOut.php",
 		{ "id": id },
+		function (response) {
+			if (response.message == -1) {
+				handleSessionExpiration();
+			}
+		},
+		"json");
+}
+
+function checkOutAll(){
+	$.post("api/judges/checkOutAll.php",
 		function (response) {
 			if (response.message == -1) {
 				handleSessionExpiration();
