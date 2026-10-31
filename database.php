@@ -35,11 +35,20 @@ class Database
 	public function getConnection()
 	{
 		try {
-			$conn = new PDO("mysql:host=$this->host;dbname=$this->database", $this->username, $this->password);
+			$conn = new PDO(
+				"mysql:host=" . $this->host . 
+				";dbname=" . $this->database,
+				$this->username,
+				$this->password
+			);
 			$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 			return $conn;
 		} catch (PDOException $e) {
-			echo "Connection failed: " . $e->getMessage();
+			// details go to the server log only
+			error_log("Database connection failed: " . $e->getMessage());
+			http_response_code(500);
+			echo json_encode(array("message" => "Database connection error."));
+			exit;
 		}
 	}
 }
