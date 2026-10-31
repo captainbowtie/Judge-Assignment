@@ -20,36 +20,32 @@
 require_once __DIR__ . "/../../config.php";
 require_once SITE_ROOT . "/database.php";
 session_start();
-if ($_SESSION["isAdmin"] || $_SESSION["isUser"]) {
+if (!empty($_SESSION["isAdmin"]) || !empty($_SESSION["isUser"])) {
 	if (
 		isset($_POST["id"]) &&
 		isset($_POST["round"]) &&
 		isset($_POST["availability"])
 	) {
 		$id = htmlspecialchars(strip_tags($_POST["id"]));
-		$round = htmlspecialchars(strip_tags($_POST["round"]));
-		$availability = htmlspecialchars(strip_tags($_POST["availability"]));
+		$round = $_POST["round"];
+		$availability = $_POST["availability"];
 
-		if (updateJudge($id, $round, $availability)) {
-			// set response code - 201 created
+		// whitelist: column names can't be bound, so only these exact values may reach the SQL
+		if (!in_array($round, ["1", "2", "3", "4"], true) || !in_array($availability, ["0", "1"], true)) {
+			http_response_code(400);
+			echo json_encode(array("message" => "Invalid round or availability."));
+			exit;
+		}
+
+		if (updateJudge($id, $round, (int)$availability)) {
 			http_response_code(201);
-
-			// tell the user
 			echo json_encode(array("message" => 0));
 		} else {
-
-			// set response code - 503 service unavailable
 			http_response_code(503);
-
-			// tell the user
 			echo json_encode(array("message" => "Unable to update judge."));
 		}
 	} else {
-
-		// set response code - 400 bad request
 		http_response_code(400);
-
-		// tell the user
 		echo json_encode(array("message" => "Unable to update judge. Data is incomplete."));
 	}
 } else {
@@ -58,15 +54,13 @@ if ($_SESSION["isAdmin"] || $_SESSION["isUser"]) {
 }
 function updateJudge($id, $round, $availability)
 {
-
-	$judgeUpdated = false;
+	$column = "round" . (int)$round; // safe: $round is already 1-4
 	$db = new Database();
 	$conn = $db->getConnection();
-	$stmt = $conn->prepare("UPDATE judges SET round$round = :availability WHERE id=:id");
-	$stmt->bindParam(':availability', $availability);
+	$stmt = $conn->prepare("UPDATE judges SET $column = :availability WHERE id = :id");
+	$stmt->bindParam(':availability', $availability, PDO::PARAM_INT);
 	$stmt->bindParam(':id', $id);
 	$stmt->execute();
 	$conn = null;
-	$judgeUpdated = true;
-	return $judgeUpdated;
+	return true;
 }
