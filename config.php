@@ -17,3 +17,7 @@
  */
 
 define('SITE_ROOT', __DIR__);
+define('ADMIN_HASH', '$2y$10$...paste admin hash...');
+define('USER_HASH', '$2y$10$...paste check-in hash...');
+
+//Command to get password hashes: php -r 'echo password_hash(trim(fgets(STDIN)), PASSWORD_DEFAULT), "\n";'
