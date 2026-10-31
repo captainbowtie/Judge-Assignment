@@ -85,10 +85,10 @@ function createPairings($round, $pairings)
 	$deletePairingsStmt->bindParam(':round', $round);
 	$deletePairingsStmt->execute();
 	//create the new pairings
-	$createStmt = $conn->prepare("INSERT INTO pairings (round, rank, room, plaintiff, defense) VALUES (:round, :rank, :room, :plaintiff, :defense)");
+	$createStmt = $conn->prepare("INSERT INTO pairings (round, ranking, room, plaintiff, defense) VALUES (:round, :ranking, :room, :plaintiff, :defense)");
 	$createStmt->bindParam(':round', $round);
 	foreach ($pairings as &$pairing) {
-		$createStmt->bindParam(':rank', $pairing["rank"]);
+		$createStmt->bindParam(':ranking', $pairing["ranking"]);
 		$createStmt->bindParam(':room', $pairing["room"]);
 		$createStmt->bindParam(':plaintiff', $pairing["plaintiff"]);
 		$createStmt->bindParam(':defense', $pairing["defense"]);
