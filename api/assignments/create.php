@@ -62,22 +62,30 @@ if ($_SESSION["isAdmin"]) {
 }
 function createAssignments($assignments)
 {
-
-	$assignmentsCreated = false;
 	$db = new Database();
 	$conn = $db->getConnection();
-	$deleteStmt = $conn->prepare("DELETE FROM assignments WHERE pairing=:pairing");
-	foreach ($assignments as $assignment) {
-		$deleteStmt->bindParam(':pairing', $assignment["pairing"]);
-		$deleteStmt->execute();
+	try {
+		$conn->beginTransaction();
+		$deleteStmt = $conn->prepare("DELETE FROM assignments WHERE pairing=:pairing");
+		foreach ($assignments as $assignment) {
+			$deleteStmt->bindParam(':pairing', $assignment["pairing"]);
+			$deleteStmt->execute();
+		}
+		$createStmt = $conn->prepare("INSERT INTO assignments (pairing, judge) VALUES (:pairing, :judge)");
+		foreach ($assignments as $assignment) {
+			$createStmt->bindParam(':pairing', $assignment["pairing"]);
+			$createStmt->bindParam(':judge', $assignment["judge"]);
+			$createStmt->execute();
+		}
+		$conn->commit();
+		return true;
+	} catch (Throwable $e) {
+		if ($conn->inTransaction()) {
+			$conn->rollBack();
+		}
+		error_log("createAssignments failed: " . $e->getMessage());
+		return false;
+	} finally {
+		$conn = null;
 	}
-	$createStmt = $conn->prepare("INSERT INTO assignments (pairing, judge) VALUES (:pairing, :judge)");
-	foreach ($assignments as $assignment) {
-		$createStmt->bindParam(':pairing', $assignment["pairing"]);
-		$createStmt->bindParam(':judge', $assignment["judge"]);
-		$createStmt->execute();
-	}
-	$conn = null;
-	$assignmentsCreated = true;
-	return $assignmentsCreated;
 }

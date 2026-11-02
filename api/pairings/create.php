@@ -65,36 +65,45 @@ if ($_SESSION["isAdmin"]) {
 }
 function createPairings($round, $pairings)
 {
-
-	$pairingsCreated = false;
 	$db = new Database();
 	$conn = $db->getConnection();
-	//get ids of existing pairings for the round so their corresponding assignments can be deleted
-	$existingPairingsStmt = $conn->prepare("SELECT id FROM pairings WHERE round=:round");
-	$existingPairingsStmt->bindParam(':round', $round);
-	$existingPairingsStmt->execute();
-	$existingPairingsResult = $existingPairingsStmt->fetchAll(PDO::FETCH_ASSOC);
-	//delete existing pairings from assignments
-	$deleteAssignmentsStmt = $conn->prepare("DELETE FROM assignments WHERE pairing=:pairing");
-	foreach ($existingPairingsResult as $pairing) {
-		$deleteAssignmentsStmt->bindParam(':pairing', $pairing["id"]);
-		$deleteAssignmentsStmt->execute();
+	try {
+		$conn->beginTransaction();
+		//get ids of existing pairings for the round so their corresponding assignments can be deleted
+		$existingPairingsStmt = $conn->prepare("SELECT id FROM pairings WHERE round=:round");
+		$existingPairingsStmt->bindParam(':round', $round);
+		$existingPairingsStmt->execute();
+		$existingPairingsResult = $existingPairingsStmt->fetchAll(PDO::FETCH_ASSOC);
+		//delete existing pairings from assignments
+		$deleteAssignmentsStmt = $conn->prepare("DELETE FROM assignments WHERE pairing=:pairing");
+		foreach ($existingPairingsResult as $existing) {
+			$deleteAssignmentsStmt->bindParam(':pairing', $existing["id"]);
+			$deleteAssignmentsStmt->execute();
+		}
+		//delete old pairings
+		$deletePairingsStmt = $conn->prepare("DELETE FROM pairings WHERE round=:round");
+		$deletePairingsStmt->bindParam(':round', $round);
+		$deletePairingsStmt->execute();
+		//create the new pairings
+		$createStmt = $conn->prepare("INSERT INTO pairings (round, ranking, room, plaintiff, defense) VALUES (:round, :ranking, :room, :plaintiff, :defense)");
+		foreach ($pairings as $pairing) {
+			$createStmt->execute([
+				':round' => $round,
+				':ranking' => $pairing["ranking"],
+				':room' => $pairing["room"],
+				':plaintiff' => $pairing["plaintiff"],
+				':defense' => $pairing["defense"],
+			]);
+		}
+		$conn->commit();
+		return true;
+	} catch (Throwable $e) {
+		if ($conn->inTransaction()) {
+			$conn->rollBack();
+		}
+		error_log("createPairings failed: " . $e->getMessage());
+		return false;
+	} finally {
+		$conn = null;
 	}
-	//delete old pairings
-	$deletePairingsStmt = $conn->prepare("DELETE FROM pairings WHERE round=:round");
-	$deletePairingsStmt->bindParam(':round', $round);
-	$deletePairingsStmt->execute();
-	//create the new pairings
-	$createStmt = $conn->prepare("INSERT INTO pairings (round, ranking, room, plaintiff, defense) VALUES (:round, :ranking, :room, :plaintiff, :defense)");
-	$createStmt->bindParam(':round', $round);
-	foreach ($pairings as &$pairing) {
-		$createStmt->bindParam(':ranking', $pairing["ranking"]);
-		$createStmt->bindParam(':room', $pairing["room"]);
-		$createStmt->bindParam(':plaintiff', $pairing["plaintiff"]);
-		$createStmt->bindParam(':defense', $pairing["defense"]);
-		$createStmt->execute();
-	}
-	$conn = null;
-	$pairingsCreated = true;
-	return $pairingsCreated;
 }
