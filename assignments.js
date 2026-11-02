@@ -667,129 +667,12 @@ function buildAssignmentTable(roundNumber) {
         assignmentSlots.push(assignment);
       }
 
-      //create initial proposal, which will either be used if acceptable or compared to future proposals
-      let assignmentProposal0 = proposeAssignments(
-        assignmentSlots,
-        filteredJudges,
-      );
-      let impermissibleJudgeCount = 1;
-      let presidePreferencesIgnored = 1;
-      let maxAttempts = 1000;
-      let attemptCounter = 0;
-      do {
-        let assignmentProposal1 = proposeAssignments(
-          assignmentSlots,
-          filteredJudges,
-        );
-
-        //impermissible judge assignment check
-        let proposal0Impermissibles =
-          countAffiliationConflicts(assignmentProposal0) +
-          countPastRoundConflicts(assignmentProposal0);
-        impermissibleJudgeCount = proposal0Impermissibles;
-        let proposal1Impermissibles =
-          countAffiliationConflicts(assignmentProposal1) +
-          countPastRoundConflicts(assignmentProposal1);
-        function countAffiliationConflicts(proposedAssignments) {
-          let conflictCount = 0;
-          for (let a = 0; a < proposedAssignments.length; a++) {
-            for (let b = 0; b < conflicts.length; b++) {
-              if (
-                conflicts[b].judge == proposedAssignments[a].judge &&
-                (proposedAssignments[a].plaintiff == conflicts[b].team ||
-                  proposedAssignments[a].defense == conflicts[b].team)
-              ) {
-                conflictCount++;
-              }
-            }
-          }
-          return conflictCount;
-        }
-        function countPastRoundConflicts(proposedAssignments) {
-          let conflictCount = 0;
-          for (let a = 0; a < proposedAssignments.length; a++) {
-            assignments.forEach((assignment) => {
-              pairings.forEach((pairing) => {
-                if (pairing.round != roundNumber && assignment.judge != 0) {
-                  //stop if the pairing to be compared is the current round or if the assignment has no judge
-                  if (proposedAssignments[a].judge == assignment.judge) {
-                    if (assignment.pairing == pairing.id) {
-                      if (
-                        sharesNonByeTeam(
-                          proposedAssignments[a].plaintiff,
-                          proposedAssignments[a].defense,
-                          pairing.plaintiff,
-                          pairing.defense,
-                        )
-                      ) {
-                        conflictCount++;
-                      }
-                    }
-                  }
-                }
-              });
-            });
-          }
-          return conflictCount;
-        }
-        if (proposal0Impermissibles > proposal1Impermissibles) {
-          assignmentProposal0 = assignmentProposal1;
-          impermissibleJudgeCount = proposal1Impermissibles;
-        }
-
-        //judge preside/score preference check
-        if (proposal0Impermissibles == 0 && proposal1Impermissibles == 0) {
-          let proposal0ExcessPresiders =
-            countExcessPresiders(assignmentProposal0);
-          let proposal1ExcessPresiders =
-            countExcessPresiders(assignmentProposal1);
-          presidePreferencesIgnored = proposal0ExcessPresiders;
-          function countExcessPresiders(proposedAssignments) {
-            //initialize array counting how may presiding judges each pairing has
-            let pairingPresiderCounts = [];
-            proposedAssignments.forEach((assignment) => {
-              pairingPresiderCounts[assignment.pairing] = 0;
-            });
-            //count how many presiders each pairing has
-            proposedAssignments.forEach((assignment) => {
-              judges.forEach((judge) => {
-                if (assignment.judge == judge.id) {
-                  if (judge.preside == 1) {
-                    pairingPresiderCounts[assignment.pairing]++;
-                  }
-                }
-              });
-            });
-            //count how many rounds have too many or not enough presiders
-            let excessPresiders = 0;
-            let neededPresiders = 0;
-            pairingPresiderCounts.forEach((pairingJudgeCount) => {
-              if (pairingJudgeCount > 1) {
-                excessPresiders++;
-              } else if (pairingJudgeCount < 1) {
-                neededPresiders++;
-              }
-            });
-            //return the product of the two counts
-            return excessPresiders * neededPresiders;
-          }
-          if (proposal0ExcessPresiders > proposal1ExcessPresiders) {
-            assignmentProposal0 = assignmentProposal1;
-            presidePreferencesIgnored = proposal1ExcessPresiders;
-          }
-        }
-
-        attemptCounter++;
-      } while (
-        attemptCounter < maxAttempts &&
-        (impermissibleJudgeCount > 0 || presidePreferencesIgnored > 0)
-      );
-
-      if (attemptCounter >= maxAttempts) {
-        alert(
-          `Unable to find permissible assignments after ${maxAttempts} attempts. Please assign judges manually, or click the button to continue attempting assignments.`,
-        );
-      }
+      			let currentRound = parseInt(roundNumber);
+			let solved = solveAssignments(assignmentSlots, filteredJudges, conflicts, currentRound);
+			let assignmentProposal0 = solved.proposal;
+			if (solved.violations > 0) {
+				alert(`No conflict-free assignment exists with the checked-in judges. The best attempt has ${solved.violations} conflict(s); they will be highlighted. Check in more judges or adjust manually.`);
+			}
 
       //put the assignments into the DOM, going pairing by pairing
       updateJudgeSelects();
@@ -1153,4 +1036,116 @@ async function markConflictedJudges() {
       }
     });
   });
+}
+
+const HARD_CONFLICT = 1000000;
+
+// Hungarian algorithm. cost is an n x m matrix with n <= m.
+// Returns an array where result[row] = the column assigned to that row.
+function hungarian(cost) {
+	const n = cost.length, m = cost[0].length;
+	const u = Array(n + 1).fill(0), v = Array(m + 1).fill(0);
+	const p = Array(m + 1).fill(0), way = Array(m + 1).fill(0);
+	for (let i = 1; i <= n; i++) {
+		p[0] = i;
+		let j0 = 0;
+		const minv = Array(m + 1).fill(Infinity);
+		const used = Array(m + 1).fill(false);
+		do {
+			used[j0] = true;
+			const i0 = p[j0];
+			let delta = Infinity, j1 = 0;
+			for (let j = 1; j <= m; j++) {
+				if (!used[j]) {
+					const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+					if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+					if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+				}
+			}
+			for (let j = 0; j <= m; j++) {
+				if (used[j]) { u[p[j]] += delta; v[j] -= delta; }
+				else { minv[j] -= delta; }
+			}
+			j0 = j1;
+		} while (p[j0] !== 0);
+		do {
+			const j1 = way[j0];
+			p[j0] = p[j1];
+			j0 = j1;
+		} while (j0);
+	}
+	const result = Array(n);
+	for (let j = 1; j <= m; j++) {
+		if (p[j]) { result[p[j] - 1] = j - 1; }
+	}
+	return result;
+}
+
+// Builds the cost matrix and solves it.
+// slots: [{pairing, judge, plaintiff, defense}], judgeList: judges to choose from
+// Returns { proposal, violations } where proposal has the same shape as slots.
+function solveAssignments(slots, judgeList, conflicts, currentRound) {
+	const NOISE = 3; // random tiebreaker so re-generating gives different results
+
+	// what each judge has already done in other rounds
+	const pastTeamsByJudge = {};
+	assignments.forEach((assignment) => {
+		if (assignment.judge == 0) { return; }
+		const pairing = pairings.find((p) => p.id == assignment.pairing);
+		if (!pairing || pairing.round == currentRound) { return; }
+		(pastTeamsByJudge[assignment.judge] = pastTeamsByJudge[assignment.judge] || []).push(pairing);
+	});
+
+	// which slot number (0 = presiding slot) each slot is within its pairing
+	const slotCounts = {};
+	const slotIndexes = slots.map((slot) => {
+		slotCounts[slot.pairing] = (slotCounts[slot.pairing] || 0);
+		return slotCounts[slot.pairing]++;
+	});
+
+	function cellCost(slot, k, judge) {
+		let cost = Math.random() * NOISE;
+		// hard conflicts
+		if (conflicts.some((c) => c.judge == judge.id && (c.team == slot.plaintiff || c.team == slot.defense))) {
+			cost += HARD_CONFLICT;
+		}
+		const past = pastTeamsByJudge[judge.id] || [];
+		if (past.some((p) => sharesNonByeTeam(slot.plaintiff, slot.defense, p.plaintiff, p.defense))) {
+			cost += HARD_CONFLICT;
+		}
+		// soft: preside (1) / score (2) / no preference (0)
+		if (k == 0) {
+			if (judge.preside == 0) { cost += 5; }
+			else if (judge.preside == 2) { cost += 20; }
+		} else if (judge.preside == 1) {
+			cost += 10;
+		}
+		return cost;
+	}
+
+	// rows = slots, columns = judges (+ dummy "empty" judges if we're short)
+	const dummyCount = Math.max(0, slots.length - judgeList.length);
+	const matrix = slots.map((slot, i) => {
+		const k = slotIndexes[i];
+		const row = judgeList.map((judge) => cellCost(slot, k, judge));
+		for (let d = 0; d < dummyCount; d++) {
+			row.push(k == 0 ? 500 : (k == 1 ? 100 : 20)); // prefer leaving later columns empty
+		}
+		return row;
+	});
+
+	const solution = hungarian(matrix);
+	let violations = 0;
+	const proposal = slots.map((slot, i) => {
+		const col = solution[i];
+		const result = structuredClone(slot);
+		if (col < judgeList.length) {
+			result.judge = judgeList[col].id;
+			if (matrix[i][col] >= HARD_CONFLICT) { violations++; }
+		} else {
+			result.judge = 0; // empty slot
+		}
+		return result;
+	});
+	return { proposal: proposal, violations: violations };
 }
