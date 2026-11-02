@@ -29,11 +29,11 @@ if ($_SESSION["isAdmin"]) {
 		$round = htmlspecialchars(strip_tags($_POST["round"]));
 		$pairings = array();
 		foreach ($_POST["pairings"] as &$pairing) {
-			$rank = htmlspecialchars(strip_tags($pairing["rank"]));
+			$ranking = htmlspecialchars(strip_tags($pairing["ranking"]));
 			$room = htmlspecialchars(strip_tags($pairing["room"]));
 			$plaintiff = htmlspecialchars(strip_tags($pairing["plaintiff"]));
 			$defense = htmlspecialchars(strip_tags($pairing["defense"]));
-			array_push($pairings, array("rank" => $rank, "room" => $room, "plaintiff" => $plaintiff, "defense" => $defense));
+			array_push($pairings, array("ranking" => $ranking, "room" => $room, "plaintiff" => $plaintiff, "defense" => $defense));
 		}
 
 
