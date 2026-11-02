@@ -203,7 +203,7 @@ function buildAssignmentTable(roundNumber) {
 	});
 	function buildPairingRow(pairing) {
 		let rowHTML = `<tr pairing='${pairing.id}'>`;
-		rowHTML += `<td><input class='rank' size='2' maxLength='2' value='${pairing.ranking}' disabled="disabled"></td>`;//rank
+		rowHTML += `<td><input class='ranking' size='2' maxLength='2' value='${pairing.ranking}' disabled="disabled"></td>`;//rank
 		rowHTML += `<td><input class='room' value='${pairing.room}' disabled="disabled"></td>`;//room
 		rowHTML += `<td><input class='plaintiff' maxlength='4' size='4' value='${pairing.plaintiff}' disabled="disabled"></td>`;//π
 		rowHTML += `<td><input class='defense' maxlength='4' size='4' value='${pairing.defense}' disabled="disabled"></td>`;//∆
@@ -273,11 +273,11 @@ function buildAssignmentTable(roundNumber) {
 		removeJudgeColumn();
 	});
 	$(`#round${roundNumber}`).find(".rankHeader").click(() => {
-		let currentVisibility = $($(`#round${roundNumber}`).find(".rank")[0]).css("visibility");
+		let currentVisibility = $($(`#round${roundNumber}`).find(".ranking")[0]).css("visibility");
 		if (currentVisibility == "visible") {
-			$(`#round${roundNumber}`).find(".rank").css("visibility", "hidden");
+			$(`#round${roundNumber}`).find(".ranking").css("visibility", "hidden");
 		} else {
-			$(`#round${roundNumber}`).find(".rank").css("visibility", "visible");
+			$(`#round${roundNumber}`).find(".ranking").css("visibility", "visible");
 		}
 	});
 	$()
@@ -310,7 +310,7 @@ function buildAssignmentTable(roundNumber) {
 		$(`#round${roundNumber}`).find(".removePairing").prop("disabled", false);
 		let rows = $(`#round${roundNumber}`).children("table").children().children("tr");
 		for (let a = 1; a < rows.length; a++) {
-			$(rows[a]).find(".rank").prop("disabled", false);
+			$(rows[a]).find(".ranking").prop("disabled", false);
 			$(rows[a]).find(".room").prop("disabled", false);
 			$(rows[a]).find(".plaintiff").prop("disabled", false);
 			$(rows[a]).find(".defense").prop("disabled", false);
@@ -382,6 +382,7 @@ function buildAssignmentTable(roundNumber) {
 					$(pairingSelects[b]).val(judgeIds[b]);
 				}
 			}
+						markConflictedJudges();
 		});
 	}
 
@@ -392,7 +393,7 @@ function buildAssignmentTable(roundNumber) {
 
 	function addPairingRow() {
 		let rowHTML = "<tr>";
-		rowHTML += "<td><input class='rank' maxlength='2' size='2'></td>"
+		rowHTML += "<td><input class='ranking' maxlength='2' size='2'></td>"
 		//if this is first round just create blank rooms
 		if (roundNumber == 1) {
 			rowHTML += "<td><input class='room'></td>"
@@ -415,6 +416,7 @@ function buildAssignmentTable(roundNumber) {
 			}
 			"</tr>"
 			$(`#round${roundNumber}`).children("table").append(rowHTML);
+						markConflictedJudges();
 		});
 		$(".judgeSelect").on("change", function () {
 			screenAssignments();
@@ -441,6 +443,7 @@ function buildAssignmentTable(roundNumber) {
 				selectHTML += "</select></td>";
 				$(rows[a]).append(selectHTML);
 			}
+						markConflictedJudges();
 		});
 		$(".judgeSelect").on("change", function () {
 			screenAssignments();
@@ -463,12 +466,12 @@ function buildAssignmentTable(roundNumber) {
 		let rows = $(`#round${roundNumber}`).children("table").children().children("tr");
 		//start at 1 because [0] is the header row
 		for (let a = 1; a < rows.length; a++) {
-			let rank = $(rows[a]).find(".rank").val();
+			let ranking = $(rows[a]).find(".ranking").val();
 			let room = $(rows[a]).find(".room").val();
 			let plaintiff = $(rows[a]).find(".plaintiff").val();
 			let defense = $(rows[a]).find(".defense").val();
 			let pairing = {
-				"rank": rank,
+				"ranking": ranking,
 				"room": room,
 				"plaintiff": plaintiff,
 				"defense": defense
@@ -874,4 +877,56 @@ function highlightAssigned() {
 			}
 		}
 	}
+}
+
+// Marks judges in every dropdown with " *" (and a strikethrough) if they have an
+// affiliation conflict or a past-round conflict with the teams in that dropdown's row
+async function markConflictedJudges() {
+	const conflicts = await getAllConflicts();
+
+	$(".judgeSelect").each(function () {
+		const select = $(this);
+		const row = select.closest("tr");
+		const plaintiff = row.find(".plaintiff").val();
+		const defense = row.find(".defense").val();
+		const roundId = select.closest("div[id^='round']").attr("id");
+		if (!roundId || (!plaintiff && !defense)) { return; }
+		const roundNumber = roundId.replace("round", "");
+
+		// judges with an affiliation conflict with either team
+		const affiliationJudges = new Set();
+		conflicts.forEach((conflict) => {
+			if (conflict.team == plaintiff || conflict.team == defense) {
+				affiliationJudges.add(String(conflict.judge));
+			}
+		});
+
+		// judges who were assigned to either team in a different round
+		const pastRoundJudges = new Set();
+		assignments.forEach((assignment) => {
+			if (assignment.judge == 0) { return; }
+			const pairing = pairings.find((p) => p.id == assignment.pairing);
+			if (!pairing || pairing.round == roundNumber) { return; }
+			if (pairing.plaintiff == plaintiff || pairing.plaintiff == defense ||
+				pairing.defense == plaintiff || pairing.defense == defense) {
+				pastRoundJudges.add(String(assignment.judge));
+			}
+		});
+
+		select.find("option").each(function () {
+			const option = $(this);
+			const judgeId = String(option.val());
+			if (judgeId == "0") { return; }
+			const baseName = option.text().replace(/ \*$/, ""); // makes this safe to re-run
+			const reasons = [];
+			if (affiliationJudges.has(judgeId)) { reasons.push("Affiliation conflict"); }
+			if (pastRoundJudges.has(judgeId)) { reasons.push("Judged one of these teams in another round"); }
+
+			if (reasons.length > 0) {
+				option.text(baseName + " *").attr("title", reasons.join("; ")).css("text-decoration", "line-through");
+			} else {
+				option.text(baseName).removeAttr("title").css("text-decoration", "");
+			}
+		});
+	});
 }
